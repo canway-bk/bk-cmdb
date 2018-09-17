@@ -443,10 +443,12 @@ const (
 	// BKDescriptionField the description field
 	BKDescriptionField = "description"
 
+	// BKGseTaskIdField the gse taskid
+	BKTaskIDField = "task_id"
 	// BKIsOnlyField the isonly name field
 	BKIsOnlyField = "isonly"
 	// BKGseTaskIdField the gse taskid
-	BKGseTaskIdField = "task_id"
+	BKGseTaskIDField = "task_id"
 	// BKProcPidFile the process pid file
 	BKProcPidFile    = "pid_file"
 	BKProcStartCmd   = "start_cmd"
@@ -769,5 +771,6 @@ const (
 	GSEProcOPKill           = 9
 )
 const (
-	RedisProcSrvHostInstanceRefreshModuleKey = BKCacheKeyV3Prefix + "prochostinstancerefresh"
+	RedisProcSrvHostInstanceRefreshModuleKey  = BKCacheKeyV3Prefix + "prochostinstancerefresh"
+	RedisProcSrvHostInstanceAllRefreshLockKey = BKCacheKeyV3Prefix + "lock:prochostinstancerefresh"
 )

@@ -17,7 +17,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	redis "gopkg.in/redis.v5"
@@ -28,41 +27,24 @@ import (
 	"configcenter/src/common/util"
 )
 
-type chanItem struct {
-	ctx       context.Context
-	eventData *metadata.EventInst
-	opFunc    func(ctx context.Context, eventData *metadata.EventInst) error
-	retry     int
-}
-
-type refreshModuleData struct {
-	Header   http.Header `json:"header"`
-	AppID    int64       `json:"bk_biz_id"`
-	ModuleID int64       `json:"bk_module_id"`
-}
-
-var (
-	handEventDataChan          chan chanItem
-	chnOpLock                  *sync.Once = new(sync.Once)
-	initDataLock               *sync.Once = new(sync.Once)
-	eventRefreshModuleDataChan chan *refreshModuleData
-	maxRefreshModuleData       int           = 100
-	maxEventDataChan           int           = 10000
-	retry                      int           = 3
-	SPOPINTERVAL               time.Duration = time.Second
-)
-
-func (lgc *Logics) reshReshInitChan(maxEvent, maxRefresh int) {
-	if 0 != maxEvent {
-		maxEventDataChan = maxEvent
+func (lgc *Logics) reshReshInitChan(config *ProcHostInstConfig) {
+	if nil == config {
+		config = &ProcHostInstConfig{
+			MaxEventCount:         0,
+			MaxRefreshModuleCount: 0,
+			GetModuleIDInterval:   0,
+		}
 	}
-	if 0 != maxRefresh {
-		maxRefreshModuleData = maxRefresh
+	if 0 != config.MaxEventCount {
+		maxEventDataChan = config.MaxEventCount
+	}
+	if 0 != config.MaxRefreshModuleCount {
+		maxRefreshModuleData = config.MaxRefreshModuleCount
 	}
 	handEventDataChan = make(chan chanItem, maxEventDataChan)
-	eventRefreshModuleDataChan = make(chan *refreshModuleData, maxRefreshModuleData)
+	refreshHostInstModuleIDChan = make(chan *refreshHostInstModuleID, maxRefreshModuleData)
 	// get appID,moduleID from redis
-	go lgc.getEventRefreshModuleItemFromRedis()
+	go lgc.getEventRefreshModuleItemFromRedis(config.GetModuleIDInterval)
 }
 
 func getMustNeedHeader(header http.Header) http.Header {
@@ -79,7 +61,7 @@ func getEventRefrshModuleKey(appID, moduleID int64) string {
 
 func (lgc *Logics) addEventRefreshModuleItem(appID, moduleID int64, header http.Header) error {
 
-	info := refreshModuleData{AppID: appID, ModuleID: moduleID, Header: getMustNeedHeader(header)}
+	info := refreshHostInstModuleID{AppID: appID, ModuleID: moduleID, Header: getMustNeedHeader(header)}
 	valInfo, err := json.Marshal(info)
 	if nil != err {
 		blog.Warnf("addEventRefreshModuleItem appID:%d, moduleID:%d, error:%s", appID, moduleID, err.Error())
@@ -92,7 +74,7 @@ func (lgc *Logics) addEventRefreshModuleItems(appID int64, moduleIDs []int64, he
 	mustNeedHeader := getMustNeedHeader(header)
 	valInfoArrs := make([]interface{}, 0)
 	for _, moduleID := range moduleIDs {
-		info := refreshModuleData{AppID: appID, ModuleID: moduleID, Header: mustNeedHeader}
+		info := refreshHostInstModuleID{AppID: appID, ModuleID: moduleID, Header: mustNeedHeader}
 		valInfo, err := json.Marshal(info)
 		if nil != err {
 			blog.Warnf("addEventRefreshModuleItem appID:%d, moduleID:%d, error:%s", appID, moduleID, err.Error())
@@ -108,24 +90,27 @@ func (lgc *Logics) addEventRefreshModuleItems(appID int64, moduleIDs []int64, he
 }
 
 // getEventRefreshModuleItemFromRedis Run once at startup
-func (lgc *Logics) getEventRefreshModuleItemFromRedis() {
+func (lgc *Logics) getEventRefreshModuleItemFromRedis(interval time.Duration) {
 	for {
 		val, err := lgc.cache.SPop(common.RedisProcSrvHostInstanceRefreshModuleKey).Result()
 		if redis.Nil == err {
-			time.Sleep(SPOPINTERVAL)
+			if 0 >= interval {
+				interval = SPOPINTERVAL
+			}
+			time.Sleep(interval)
 			continue
 		}
 		if nil != err {
 			blog.Warnf("getEventRefreshModuleItemFromRedis error:%s", err.Error())
 			continue
 		}
-		item := &refreshModuleData{}
+		item := &refreshHostInstModuleID{}
 		err = json.Unmarshal([]byte(val), item)
 		if nil != err {
 			blog.Warnf("getEventRefreshModuleItemFromRedis  error:%s", err.Error())
 			continue
 		}
-		eventRefreshModuleDataChan <- item
+		refreshHostInstModuleIDChan <- item
 
 	}
 
