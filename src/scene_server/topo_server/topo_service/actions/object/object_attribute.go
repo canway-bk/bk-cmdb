@@ -24,7 +24,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-
+	"configcenter/src/common/errors"
 	"github.com/emicklei/go-restful"
 )
 
@@ -84,6 +84,23 @@ func (cli *objattAction) CreateObjectAtt(req *restful.Request, resp *restful.Res
 
 		blog.Debug("create %s", string(val))
 
+		// check list header name begin(chace)
+		if obj.PropertyType == common.FieldTypeList {
+			headerList, ok :=  obj.Option.([]interface{})
+			if !ok {
+				return http.StatusInternalServerError, nil, defErr.Error(common.CCErrTopoObjectAttributeUpdateFailed)
+			}
+			errorData := CheckListHeaderChart(headerList, defErr)
+			if 0 != len(errorData) {
+				return http.StatusInternalServerError, errorData, defErr.Error(common.CCErrTopoObjectAttrCreateTypeListNameCheck)
+			}
+			errorData = CheckListHeaderRepeat(headerList, defErr)
+			if 0 != len(errorData) {
+				return http.StatusInternalServerError, errorData, defErr.Error(common.CCErrTopoObjectAttrCreateTypeListNameCheck)
+			}
+		}
+		// check list header name end(chace)
+
 		// deal data
 		result, ctrErr := cli.mgr.CreateObjectAtt(forward, obj, defErr)
 		if nil == ctrErr {
@@ -142,6 +159,24 @@ func (cli *objattAction) UpdateObjectAtt(req *restful.Request, resp *restful.Res
 			blog.Error("failed to read request body, error info is %s", err.Error())
 			return http.StatusBadRequest, nil, defErr.Error(common.CCErrCommHTTPReadBodyFailed)
 		}
+		// check list header name start (chace)
+		obj := make(map[string]interface{})
+		json.Unmarshal(val, &obj)
+		if obj[common.BKPropertyTypeField] == common.FieldTypeList {
+			headerList, ok := obj["option"].([]interface{})
+			if !ok {
+				return http.StatusInternalServerError, nil, defErr.Error(common.CCErrTopoObjectAttributeUpdateFailed)
+			}
+			errorData := CheckListHeaderChart(headerList, defErr)
+			if 0 != len(errorData) {
+				return http.StatusInternalServerError, errorData, defErr.Error(common.CCErrTopoObjectAttrCreateTypeListNameCheck)
+			}
+			errorData = CheckListHeaderRepeat(headerList, defErr)
+			if 0 != len(errorData) {
+				return http.StatusInternalServerError, errorData, defErr.Error(common.CCErrTopoObjectAttrCreateTypeListNameCheck)
+			}
+		}
+		// check list header name end
 
 		// get params
 		attrID, attrIDErr := strconv.Atoi(req.PathParameter("id"))
@@ -199,4 +234,60 @@ func (cli *objattAction) DeleteObjectAtt(req *restful.Request, resp *restful.Res
 		return http.StatusInternalServerError, nil, defErr.Error(common.CCErrTopoObjectAttributeDeleteFailed)
 	}, resp)
 
+}
+
+
+
+// helper
+// 校验模型实例字段list类型的字段名称是否为字符串
+func CheckListHeaderChart (headerList []interface{}, defErr errors.DefaultCCErrorIf) map[int]string {
+	errorData := make(map[int]string)
+	for index, header := range headerList {
+		headerMap := header.(map[string]interface{})
+		headerName, ok:= headerMap["list_header_name"].(string)
+		if !ok {
+			errorData[index] = defErr.Error(common.CCErrTopoObjectAttrCreateTypeListNameField).Error()
+			continue
+		}
+		if "" == headerName {
+			errorData[index] = defErr.Error(common.CCErrTopoObjectAttrCreateTypeListNameEmpty).Error()
+			continue
+		}
+		//if !util.IsField(headerName) {
+		//	errorData[index] = defErr.Error(common.CCErrTopoObjectAttrCreateTypeListNameField).Error()
+		//	continue
+		//}
+		if !util.CheckLen(headerName, 2, 40) {
+			errorData[index] = defErr.Error(common.CCErrTopoObjectAttrCreateTypeListNameLen).Error()
+			continue
+		}
+	}
+	return errorData
+}
+
+// 校验模型实例字段list类型的字段名称是否重复
+func CheckListHeaderRepeat(headerList []interface{}, defErr errors.DefaultCCErrorIf) map[int]string {
+	errorData := make(map[int]string)
+	checkData := make(map[string]int, 0)
+	for index, header := range headerList {
+		headerMap := header.(map[string]interface{})
+		headerName, ok:= headerMap["list_header_name"].(string)
+		if !ok {
+			errorData[index] = defErr.Error(common.CCErrTopoObjectAttrCreateTypeListNameField).Error()
+			continue
+		}
+		if _, ok := checkData[headerName]; !ok {
+			checkData[headerName] = index
+		}else {
+			for index, header := range headerList {
+				headerMap := header.(map[string]interface{})
+				if headerMap["list_header_name"] == headerName {
+					if _,ok := errorData[index]; !ok {
+						errorData[index] = defErr.Error(common.CCErrTopoObjectAttrCreateTypeListNameRepeat).Error()
+					}
+				}
+			}
+		}
+	}
+	return errorData
 }

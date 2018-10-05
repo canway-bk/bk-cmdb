@@ -22,6 +22,10 @@ import (
 	"configcenter/src/scene_server/api"
 
 	"github.com/emicklei/go-restful"
+	"fmt"
+	"io"
+	"net/http"
+	"encoding/json"
 )
 
 var objatt = &objectAttAction{}
@@ -46,12 +50,27 @@ func init() {
 func (cli *objectAttAction) CreateObjectAtt(req *restful.Request, resp *restful.Response) {
 
 	blog.Info("create objectatt")
-
-	senceCLI := api.NewClient(module.CC.TopoAPI())
-	cli.CallResponse(
-		senceCLI.ReForwardCreateMetaObjAtt(func(url, method string) (string, error) {
-			return httpclient.ReqForward(req, url, method)
-		}), resp)
+	url := fmt.Sprintf("%s/topo/v1/objectattr", module.CC.TopoAPI())
+	res ,err := httpclient.ReqForward(req, url, common.HTTPCreate)
+	if nil != err {
+		blog.Error("httpclient ReqForward err :%v", err)
+		cli.ResponseFailed(http.StatusInternalServerError, err.Error(), resp)
+		return
+	}
+	reply := make(map[string]interface{})
+	err = json.Unmarshal([]byte(res), &reply)
+	if nil != err {
+		blog.Error("json unmarshal err :%v", err)
+		cli.ResponseFailed(http.StatusInternalServerError, fmt.Sprintf("json unmarshal err %v", err.Error()), resp)
+		return
+	}
+	io.WriteString(resp,res)
+	return
+	//senceCLI := api.NewClient(module.CC.TopoAPI())
+	//cli.CallResponse(
+	//	senceCLI.ReForwardCreateMetaObjAtt(func(url, method string) (string, error) {
+	//		return httpclient.ReqForward(req, url, method)
+	//	}), resp)
 
 }
 
@@ -74,14 +93,30 @@ func (cli *objectAttAction) DeleteObjectAtt(req *restful.Request, resp *restful.
 func (cli *objectAttAction) UpdateObjectAtt(req *restful.Request, resp *restful.Response) {
 
 	blog.Info("update objectatt")
-
+	blog.Info("update objectatt")
 	attrID := req.PathParameter("attr_id")
-	senceCLI := api.NewClient(module.CC.TopoAPI())
-	cli.CallResponse(
-		senceCLI.ReForwardUpdateMetaObjAtt(func(url, method string) (string, error) {
-			return httpclient.ReqForward(req, url, method)
-		}, attrID),
-		resp)
+	url := fmt.Sprintf("%s/topo/v1/objectattr/%s", module.CC.TopoAPI(), attrID)
+	res ,err := httpclient.ReqForward(req, url, common.HTTPUpdate)
+	if nil != err {
+		blog.Error("httpclient ReqForward err :%v", err)
+		cli.ResponseFailed(http.StatusInternalServerError, err.Error(), resp)
+		return
+	}
+	reply := make(map[string]interface{})
+	err = json.Unmarshal([]byte(res), &reply)
+	if nil != err {
+		blog.Error("json unmarshal err :%v", err)
+		cli.ResponseFailed(http.StatusInternalServerError, fmt.Sprintf("json unmarshal err %v", err.Error()), resp)
+		return
+	}
+	io.WriteString(resp,res)
+	//attrID := req.PathParameter("attr_id")
+	//senceCLI := api.NewClient(module.CC.TopoAPI())
+	//cli.CallResponse(
+	//	senceCLI.ReForwardUpdateMetaObjAtt(func(url, method string) (string, error) {
+	//		return httpclient.ReqForward(req, url, method)
+	//	}, attrID),
+	//	resp)
 
 }
 

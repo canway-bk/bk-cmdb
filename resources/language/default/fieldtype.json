@@ -10,6 +10,8 @@
 	"field_type_multiasst": "多关联",
 	"field_type_timezone": "时区",
 	"field_type_bool": "布尔",
+	"field_type_list": "表格",
+	"field_type_password": "密码",
 	"field_type_bool_true": "是",
 	"field_type_bool_false": "否"
 }

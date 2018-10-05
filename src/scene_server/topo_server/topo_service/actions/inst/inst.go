@@ -220,11 +220,12 @@ func (cli *instAction) subCreateInst(forward *api.ForwardParam, req *restful.Req
 			return http.StatusBadRequest, nil, isUpdate, err
 		}
 	}
-
+	blog.Debug("-----2---------")
 	// take snapshot before operation if is update
 	preData := map[string]interface{}{}
 	var instID int
 	var retStrErr int
+	blog.Debug("targetMethod:%v",targetMethod)
 	if targetMethod == common.HTTPUpdate {
 		preData, retStrErr = cli.getInstDeteilByCondition(req, objID, ownerID, input["condition"].(map[string]interface{}))
 		if common.CCSuccess != retStrErr {
@@ -256,7 +257,37 @@ func (cli *instAction) subCreateInst(forward *api.ForwardParam, req *restful.Req
 	input[common.BKObjIDField] = objID
 	input[common.BKDefaultField] = 0
 	input[common.CreateTimeField] = util.GetCurrentTimeStr()
-
+	// 如果是密码字段，则进行加密
+	// aes password start(chace)
+	attDes, attErr := cli.getObjAttDes(forward, ownerID, objID)
+	if common.CCSuccess != attErr {
+		blog.Errorf("get obj att des error: %v", attErr)
+		return http.StatusInternalServerError, nil, isUpdate, defErr.Error(attErr)
+	}
+	for _, att:= range attDes {
+		if att.ObjectID != objID {
+			continue
+		}
+		if (att.PropertyType == common.FieldTypePassword ){
+			propertyID := att.PropertyID
+			password, ok := input[propertyID].(string)
+			if false == ok {
+				blog.Error("password is not string")
+				continue
+			}
+			password = strings.Trim(password, " ")
+			if "" == password {
+				continue
+			}
+			aesPwd, err := util.AesEncrypt([]byte(password))
+			if nil != err {
+				blog.Errorf("aes encrypt error: %v", err)
+				return http.StatusInternalServerError, nil, isUpdate, defErr.Error(retStrErr)
+			}
+			input[propertyID] = aesPwd
+		}
+	}
+	// aes password end
 	inputJSON, jsErr := json.Marshal(input)
 	if nil != jsErr {
 		blog.Error("the input json is invalid, error info is %s", jsErr.Error())
@@ -482,7 +513,6 @@ func (cli *instAction) CreateInst(req *restful.Request, resp *restful.Response) 
 					}
 
 				}
-
 				if _, _, isUpdate, rstErr := createFunc(forward, req, defErr, colInput, ownerID, objID, true, asstDes, attdes); nil != rstErr {
 					if !isUpdate {
 						blog.Debug("failed to create inst, error info is %s", rstErr.Error())
@@ -828,7 +858,45 @@ func (cli *instAction) UpdateInst(req *restful.Request, resp *restful.Response) 
 
 			input["condition"] = condition
 			input["data"] = data
-
+			// aes password start(chace)
+			attDes, attErr := cli.getObjAttDes(forward, ownerID, objID)
+			if common.CCSuccess != attErr {
+				blog.Errorf("get obj att des error: %v", attErr)
+				return http.StatusInternalServerError, "", defErr.Error(attErr)
+			}
+			for _, att:= range attDes {
+				if att.ObjectID != objID {
+					continue
+				}
+				if (att.PropertyType == common.FieldTypePassword ){
+					propertyID := att.PropertyID
+					// 密码未修改跳过加密
+					pre ,ok := preData.(map[string]interface{})
+					if false==ok {
+						blog.Error("password is not string")
+						continue
+					}
+					if data[propertyID] == pre[propertyID]{
+						continue
+					}
+					password, ok := data[propertyID].(string)
+					if false == ok {
+						blog.Error("password is not string")
+						continue
+					}
+					password = strings.Trim(password, " ")
+					if "" == password {
+						continue
+					}
+					aesPwd, err := util.AesEncrypt([]byte(password))
+					if nil != err {
+						blog.Errorf("aes encrypt error: %v", err)
+						return http.StatusInternalServerError, "", err
+					}
+					data[propertyID] = aesPwd
+				}
+			}
+			// aes password end
 			inputJSON, jsErr := json.Marshal(input)
 			if nil != jsErr {
 				blog.Error("failed to create json object, error info is %s", jsErr.Error())
@@ -840,12 +908,15 @@ func (cli *instAction) UpdateInst(req *restful.Request, resp *restful.Response) 
 				blog.Error("failed to update the inst, error info is %s", err.Error())
 				return http.StatusInternalServerError, "", defErr.Error(common.CCErrTopoInstUpdateFailed)
 			}
-
+			// todo 这里提示有错
+			//if _, ok := cli.IsSuccess([]byte(objRes)); !ok {
+			//	blog.Error("failed to delete the inst , error inst is %s", objRes)
+			//	return http.StatusInternalServerError, objRes, defErr.Error(common.CCErrTopoInstDeleteFailed)
+			//}
 			if _, ok := cli.IsSuccess([]byte(objRes)); !ok {
-				blog.Error("failed to delete the inst , error inst is %s", objRes)
-				return http.StatusInternalServerError, objRes, defErr.Error(common.CCErrTopoInstDeleteFailed)
+				blog.Error("failed to update the inst , error inst is %s", objRes)
+				return http.StatusInternalServerError, objRes, defErr.Error(common.CCErrTopoInstUpdateFailed)
 			}
-
 			{
 				// save change log
 				headers, attErr := cli.getHeader(forward, ownerID, objID)

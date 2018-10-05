@@ -17,10 +17,27 @@
                     <h3 class="title">{{propertyGroup === 'none' ? $t("Common['更多属性']") : bkPropertyGroups[propertyGroup]['bkPropertyGroupName']}}</h3>
                     <ul class="clearfix attribute-list">
                         <template v-for="(property, propertyIndex) in bkPropertyGroups[propertyGroup]['properties']">
-                            <li class="attribute-item fl" v-if="!property['bk_isapi']" :key="propertyIndex">
-                                <template v-if="property['bk_property_type'] !== 'bool'">
+                            <li class="attribute-item fl" v-if="!property['bk_isapi']" :class="property['bk_property_type']==='list'?'attr-list':''" :key="propertyIndex">
+                                <template v-if="property['bk_property_type'] !== 'bool'
+                                      && property['bk_property_type'] !== 'list'
+                                      && property['bk_property_type'] !== 'password'">
                                     <span class="attribute-item-label has-colon" :title="property['bk_property_name']">{{property['bk_property_name']}}</span>
                                     <span class="attribute-item-value" :title="getFieldValue(property)">{{getFieldValue(property)}}</span>
+                                </template>
+                                <template v-else-if="property['bk_property_type'] === 'list'">
+                                    <span class="attribute-item-label has-colon" :title="property['bk_property_name']">{{property['bk_property_name']}}</span>
+                                    <v-table-field
+                                        :width="700"
+                                        :property="property"
+                                        :value="getFieldValue(property)"
+                                        :type="'list'">
+                                    </v-table-field>
+                                </template>
+                                <template v-else-if="property['bk_property_type'] === 'password'">
+                                    <span class="attribute-item-label has-colon" :title="property['bk_property_name']">{{property['bk_property_name']}}</span>
+                                    <span class="attribute-item-value ">
+                                        ******
+                                    </span>
                                 </template>
                                 <template v-else>
                                     <span class="attribute-item-label" :title="property['bk_property_name']">{{property['bk_property_name']}}</span>
@@ -45,11 +62,11 @@
                             <h3 class="title">{{propertyGroup === 'none' ? $t("Common['更多属性']") : bkPropertyGroups[propertyGroup]['bkPropertyGroupName']}}</h3>
                                 <ul class="clearfix attribute-list edit">
                                     <template v-for="(property, propertyIndex) in bkPropertyGroups[propertyGroup]['properties']">
-                                        <li class="attribute-item fl" :class="property['bk_property_type']" :key="propertyIndex"
+                                        <li class="attribute-item fl" :class="property['bk_property_type']==='list'?'attr-list':property['bk_property_type']" :key="propertyIndex"
                                             v-if="checkIsShowField(property)">
                                             <div>
                                                 <label :class="[{'required': property['isrequired']}]" class="bk-form-checkbox bk-checkbox-small">
-                                                    <input type="checkbox" v-if="isMultipleUpdate && property['bk_property_type'] !== 'bool'" 
+                                                    <input type="checkbox" v-if="isMultipleUpdate && property['bk_property_type'] !== 'bool'"
                                                         v-model="multipleEditableFields[property['bk_property_id']]"
                                                         @change="clearFieldValue(property)">
                                                     <span>{{property['bk_property_name']}}</span>
@@ -59,7 +76,7 @@
                                             <div class="attribute-item-field">
                                                 <v-member-selector v-if="property['bk_property_type'] === 'objuser'"
                                                     :disabled="checkIsFieldDisabled(property)"
-                                                    :selected.sync="localValues[property['bk_property_id']]" 
+                                                    :selected.sync="localValues[property['bk_property_id']]"
                                                     :multiple="true">
                                                 </v-member-selector>
                                                 <bk-datepicker v-else-if="property['bk_property_type'] === 'date'"
@@ -95,6 +112,17 @@
                                                     :selected.sync="localValues[property['bk_property_id']]"
                                                     :disabled="checkIsFieldDisabled(property)"
                                                 ></v-timezone>
+                                                <v-table-field v-else-if="property['bk_property_type'] === 'list'"
+                                                               :width="675"
+                                                               :property="property"
+                                                               :value.sync="localValues[property['bk_property_id']]"
+                                                               :type="'form'">
+                                                </v-table-field>
+                                                <div   v-else-if="property['bk_property_type'] === 'password'">
+                                                    <input type="password" class="bk-form-input"
+                                                           v-model="localValues[property['bk_property_id']]"
+                                                           :disabled="checkIsFieldDisabled(property)">
+                                                </div>
                                                 <span class="bk-form-checkbox" v-else-if="property['bk_property_type'] === 'bool'">
                                                     <input
                                                         type="checkbox"
@@ -103,16 +131,16 @@
                                                     </input>
                                                 </span>
                                                 <input type="text" class="bk-form-input" v-else-if="property['bk_property_type'] === 'int'"
-                                                    :disabled="checkIsFieldDisabled(property)" maxlength="11" 
+                                                    :disabled="checkIsFieldDisabled(property)" maxlength="11"
                                                     v-model.trim.number="localValues[property['bk_property_id']]">
                                                 <input v-else
                                                     type="text" class="bk-form-input"
-                                                    :disabled="checkIsFieldDisabled(property)" 
+                                                    :disabled="checkIsFieldDisabled(property)"
                                                     v-model.trim="localValues[property['bk_property_id']]">
                                                 <template v-if="getValidateRules(property)">
                                                     <v-validate class="attribute-validate-result"
                                                         v-validate="getValidateRules(property)"
-                                                        :name="property['bk_property_name']" 
+                                                        :name="property['bk_property_name']"
                                                         :value="property['bk_property_type'] === 'bool' ? localValues[property['bk_property_id']] || false : localValues[property['bk_property_id']]">
                                                     </v-validate>
                                                 </template>
@@ -156,6 +184,7 @@
     import vEnumeration from '@/components/common/selector/enumeration'
     import vAssociation from '@/components/common/selector/association'
     import vHost from '@/components/common/hostAssociation/host'
+    import vTableField from '@/components/common/tableField/tableField'
     import vValidate from '@/components/common/validator/validate'
     import { mapGetters } from 'vuex'
     import Authority from '@/mixins/authority'
@@ -293,7 +322,7 @@
                     if (this.isMultipleUpdate && !this.multipleEditableFields[bkPropertyId]) {
                         delete formData[bkPropertyId]
                     }
-                    if (Array.isArray(formData[bkPropertyId])) {
+                    if (!['list'].includes(bkPropertyType) && Array.isArray(formData[bkPropertyId])) {
                         formData[bkPropertyId] = formData[bkPropertyId].filter(({id}) => !!id).map(({bk_inst_id: bkInstId}) => bkInstId).join(',')
                     }
                 })
@@ -317,7 +346,7 @@
                         }
                     }
                 }
-                
+
                 return formData
             }
         },
@@ -595,10 +624,10 @@
                     }
                 }
                 if (bkPropertyType === 'singlechar') {
-                    rules['singlechar'] = true
+                    rules['singlechar'] = false
                 }
                 if (bkPropertyType === 'longchar') {
-                    rules['longchar'] = true
+                    rules['longchar'] = false
                 }
                 if (bkPropertyType === 'int') {
                     rules['regex'] = '^(0|[1-9][0-9]*|-[1-9][0-9]*)$'
@@ -633,7 +662,8 @@
             vValidate,
             vHost,
             vEnumeration,
-            vAssociation
+            vAssociation,
+            vTableField
         }
     }
 </script>
@@ -689,6 +719,9 @@
                 }
             }
         }
+    }
+    .attr-list{
+        width:100%!important;
     }
     .attribute-list.edit{
         .attribute-item{

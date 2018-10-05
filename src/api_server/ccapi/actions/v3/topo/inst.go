@@ -22,6 +22,10 @@ import (
 	"configcenter/src/scene_server/api"
 
 	"github.com/emicklei/go-restful"
+	"io/ioutil"
+	"net/http"
+	"encoding/json"
+	"configcenter/src/common/util"
 )
 
 var inst = &instAction{}
@@ -46,6 +50,8 @@ func init() {
 	actions.RegisterNewAction(actions.Action{Verb: common.HTTPSelectPost, Path: "/inst/search/{owner_id}/{obj_id}/{inst_id}", Params: nil, Handler: inst.SelectInst, FilterHandler: nil, Version: v3.APIVersion})
 	actions.RegisterNewAction(actions.Action{Verb: common.HTTPSelectPost, Path: "/inst/search/topo/owner/{owner_id}/object/{object_id}/inst/{inst_id}", Params: nil, Handler: inst.SelectTopo, FilterHandler: nil, Version: v3.APIVersion})
 	actions.RegisterNewAction(actions.Action{Verb: common.HTTPSelectPost, Path: "/inst/association/topo/search/owner/{owner_id}/object/{object_id}/inst/{inst_id}", Params: nil, Handler: inst.SelectInstAssociationTopo, FilterHandler: nil, Version: v3.APIVersion})
+	actions.RegisterNewAction(actions.Action{Verb: common.HTTPSelectPost, Path: "/inst/{owner_id}/password/decrypt/", Params: nil, Handler: inst.DecryptInst, FilterHandler: nil, Version: v3.APIVersion})
+
 	// set cc api interface
 	inst.CreateAction()
 	//inst.sencecli = api.NewClient(inst.CC.TopoAPI())
@@ -277,4 +283,39 @@ func (cli *instAction) SelectInstsByObject(req *restful.Request, resp *restful.R
 		}, ownerID, objID),
 		resp)
 
+}
+
+// Decrypt Inst(chace)
+func (cli *instAction) DecryptInst(req *restful.Request, resp *restful.Response) {
+	blog.Info("decrypt inst")
+	ownerID := req.PathParameter("owner_id")
+	if ownerID != common.BKDefaultOwnerID {
+		errMsg := "ownerId error"
+		blog.Error("decrypt inst error:%v", errMsg)
+		cli.ResponseFailed(http.StatusInternalServerError, errMsg, resp)
+		return
+	}
+	body, err := ioutil.ReadAll(req.Request.Body)
+	if err != nil {
+		blog.Error("ioutil readAll error:%v",err)
+		cli.ResponseFailed(http.StatusInternalServerError, err.Error(), resp)
+		return
+	}
+	input := make(map[string]interface{})
+	json.Unmarshal(body, &input)
+	blog.Debug("input:%s",input)
+	password,ok := input["password"].(string)
+	if !ok {
+		blog.Error("get password error: password is not string")
+		cli.ResponseFailed(http.StatusInternalServerError, "wrong password", resp)
+		return
+	}
+	password, err = util.AesDecrypt(password)
+	if err != nil {
+		blog.Error("aes decrypt error,errMsg:%v",err)
+		cli.ResponseFailed(http.StatusInternalServerError, "wrong password", resp)
+		return
+	}
+	cli.ResponseSuccess(password,resp)
+	return
 }

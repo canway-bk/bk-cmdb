@@ -10,13 +10,13 @@
 
 <template>
     <div class="filter-wrapper" :class="{'close': !isOpen}">
-        <a href="javascript:void(0)" class="bk-icon icon-angle-right filter-toggle" 
-            :class="{'filter-toggle-close': !isOpen}" 
+        <a href="javascript:void(0)" class="bk-icon icon-angle-right filter-toggle"
+            :class="{'filter-toggle-close': !isOpen}"
             @click="filterToggle">
         </a>
         <bk-tab class="filter-tab" :active-name="tab.active" @tab-changed="tabChanged" v-show="isOpen">
             <bk-tabpanel name="screening" :title="$t('HostResourcePool[\'筛选\']')" ref="screeningTabpanel">
-                <v-screening ref="screening" 
+                <v-screening ref="screening"
                     :queryColumns="queryColumns"
                     :queryColumnData="queryColumnData"
                     :attribute="attribute"
@@ -57,9 +57,9 @@
                     </div>
                     <div class="footer">
                         <label class="bk-form-checkbox bk-checkbox-small p0 fl mt10" hidden>
-                            <input type="checkbox" name="checkbox" 
-                                v-model="tab.screening.default" 
-                                :true-value="1" 
+                            <input type="checkbox" name="checkbox"
+                                v-model="tab.screening.default"
+                                :true-value="1"
                                 :false-value="2">
                             <span class="acquiescence vm pl5">{{$t('Hosts[\'默认\']')}}</span>
                         </label>
@@ -477,3 +477,4 @@
     }
 }
 </style>
+
