@@ -57,7 +57,7 @@
                         </template>
                         <template v-else>
                             <div class="model-content" v-if="topoList.length != 0">
-                                <bk-button v-if="curTempClassify['bk_classification_id'] !== 'bk_biz_topo' && curTempClassify['bk_classification_id'] !== 'bk_host_manage'" type="primary" class="topo-btn edit" @click="popShow('edit')">
+                                <bk-button v-if="curTempClassify['bk_classification_id'] !== 'bk_biz_topo' && curTempClassify['bk_classification_id'] !== 'bk_host_manage'" type="primary" class="topo-btn edit" @click="popShow('edit')" :title="$t('Common[\'编辑\']')">
                                     <i class="icon icon-cc-edit"></i>
                                 </bk-button>
                                 <bk-button type="danger" class="topo-btn del" v-if="curTempClassify['bk_classification_type']!=='inner'" @click="deleteClassify">
@@ -79,7 +79,7 @@
                         </template>
                     </div>
                     <div class="no-model-prompting tc" v-show="topoList.length == 0 || isCreateShow">
-                        <bk-button v-if="curTempClassify['bk_classification_id'] !== 'bk_biz_topo' && curTempClassify['bk_classification_id'] !== 'bk_host_manage'" type="primary" class="topo-btn edit" @click="popShow('edit')">
+                        <bk-button v-if="curTempClassify['bk_classification_id'] !== 'bk_biz_topo' && curTempClassify['bk_classification_id'] !== 'bk_host_manage'" type="primary" class="topo-btn edit" @click="popShow('edit')" :title="$t('Common[\'编辑\']')">
                             <i class="icon icon-cc-edit"></i>
                         </bk-button>
                         <bk-button type="danger" class="topo-btn del" v-if="curTempClassify['bk_classification_type']!=='inner'" @click="deleteClassify">
@@ -92,7 +92,7 @@
                         <transition name="topo-disable-list">
                             <div class="topo-disable tl" v-show="isShowDisableList">
                                 <label class="disable-title">
-                                    <span>{{$t('ModelManagement["已禁用模型"]')}}</span>
+                                    <span>{{$t('ModelManagement["已停用模型"]')}}</span>
                                     <i class="bk-icon icon-arrows-right" @click="isShowDisableList = false"></i>
                                 </label>
                                 <ul class="disable-list" ref="disableList">
@@ -103,8 +103,8 @@
                             </div>
                         </transition>
                         <img src="../../common/images/no_model_prompting.png" alt="">
-                        <p v-if="isCreateShow">{{$t('ModelManagement["此分类下无已启用模型"]')}}</p>
-                        <p v-else>{{$t('ModelManagement["此分类下无模型"]')}}</p>
+                        <p v-if="isCreateShow">{{$t('ModelManagement["此分组下无已启用模型"]')}}</p>
+                        <p v-else>{{$t('ModelManagement["此分组下无模型"]')}}</p>
                         <bk-button type="primary" class="create-btn" @click="showAddModel">{{$t('Common["立即创建"]')}}</bk-button>
                     </div>
                 </div>
@@ -130,7 +130,7 @@
                         :id="curModel['id']"
                         :isShow="slider.isBusinessShow"
                         :objId="curModel['bk_obj_id']"
-                        :isMainLine="isMainLine"
+                        :isMainLine="curClassify['bk_classification_id']==='bk_biz_topo'"
                         :classificationId="curClassify['bk_classification_id']"
                         :associationId="curInsertInfo.preObj"
                         :isReadOnly="isModelDetailReadOnly"
@@ -218,7 +218,6 @@
                 iconValue: 'icon-cc-business',               // 选择icon的值
                 list: [],                      // icon 的值
                 isChangeClassify: false,    // 是否点击的切换分组类型  true: 点击的切换分组 false: 点击的已启用/未启用
-                isMainLine: false,          // 是否操作主线模型
                 curTopoStructure: [],       // 当前分类模型拓扑结构
                 insertType: '',             // 插入模型  prev 向上 next 向下 mid 中间
                 insertParams: {},           // 插入时相关参数
@@ -283,8 +282,6 @@
                 type: prev向上添加 next向下添加
             */
             addModel (item, type) {
-                this.isMainLine = true
-                // this.curInsertInfo = item
                 this.curTopoStructure.map(({bk_obj_id: objId, bk_pre_obj_id: preObj}) => {
                     if (objId === item['bk_obj_id']) {
                         this.curInsertInfo.preObj = preObj
@@ -325,7 +322,6 @@
                 // 插入类型置空
                 this.insertType = ''
                 this.isModelDetailReadOnly = false
-                this.isMainLine = false
                 this.showAddModel()
             },
             showAddModel () {
@@ -403,7 +399,7 @@
                         bk_classification_name: classification['bk_classification_name'],
                         bk_classification_icon: classification['bk_classification_icon']
                     }
-                    this.$axios.put(`object/classification/${this.curClassify['id']}`, params).then(res => {
+                    this.$axios.put(`object/classification/${this.curClassify['id']}`, params, {id: 'saveClassify'}).then(res => {
                         if (res.result) { // 保存时显示当前项
                             for (var i = 0; i < this.classifyList.length; i++) {
                                 if (this.classifyList[i]['bk_classification_id'] === this.curClassify['bk_classification_id']) {
@@ -431,7 +427,7 @@
                         bk_classification_name: classification['bk_classification_name'],
                         bk_classification_icon: classification['bk_classification_icon']
                     }
-                    this.$axios.post('object/classification', createParams).then((res) => {
+                    this.$axios.post('object/classification', createParams, {id: 'saveClassify'}).then((res) => {
                         if (res.result) {
                             this.getClassifyList(this.classifyList.length)
                             this.isEditClassify = false
@@ -631,14 +627,14 @@
             deleteClassify () {
                 var self = this
                 this.$bkInfo({
-                    title: this.$t('ModelManagement["确认要删除此分类？"]'),
+                    title: this.$t('ModelManagement["确认要删除此分组？"]'),
                     confirmFn () {
                         self.deletes()
                     }
                 })
             },
             deletes () {
-                this.$axios.delete(`object/classification/${this.curTempClassify['id']}`).then(res => {
+                this.$axios.delete(`object/classification/${this.curClassify['id']}`).then(res => {
                     if (res.result) {
                         this.getClassifyList()
                     } else {
@@ -716,7 +712,7 @@
                         if (!index) {
                             index = 0
                         }
-                        // this.curClassify = this.classifyList[index]
+                        this.curClassify = this.classifyList[index]
                         this.curTempClassify = {
                             id: this.classifyList[index]['id'],
                             bk_classification_type: this.classifyList[index]['bk_classification_type'],

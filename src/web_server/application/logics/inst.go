@@ -13,44 +13,44 @@
 package logics
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
+	simplejson "github.com/bitly/go-simplejson"
+	"github.com/rentiansheng/xlsx"
+
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
 	lang "configcenter/src/common/language"
 	webCommon "configcenter/src/web_server/common"
-	"encoding/json"
-	"errors"
-	"fmt"
-	simplejson "github.com/bitly/go-simplejson"
-	"github.com/rentiansheng/xlsx"
-	"net/http"
-	"strconv"
-	"strings"
 	"reflect"
 )
 
 //GetImportInsts get insts from excel file
-func GetImportInsts(f *xlsx.File, objID, url string, header http.Header, headerRow int, isInst bool, defLang lang.DefaultCCLanguageIf) (map[int]map[string]interface{}, error) {
+func GetImportInsts(f *xlsx.File, objID, url string, header http.Header, headerRow int, isInst bool, defLang lang.DefaultCCLanguageIf) (map[int]map[string]interface{}, []string, error) {
 
 	fields, err := GetObjFieldIDs(objID, url, nil, header)
 	if nil != err {
-		return nil, errors.New(defLang.Languagef("web_get_object_field_failure", err.Error()))
+		return nil, nil, errors.New(defLang.Languagef("web_get_object_field_failure", err.Error()))
 	}
 	if 0 == len(f.Sheets) {
 		blog.Error("the excel file sheets is empty")
-		return nil, errors.New(defLang.Language("web_excel_content_empty"))
+		return nil, nil, errors.New(defLang.Language("web_excel_content_empty"))
 	}
 	sheet := f.Sheets[0]
 	if nil == sheet {
 		blog.Error("the excel fiel sheet is nil")
-		return nil, errors.New(defLang.Language("web_excel_sheet_not_found"))
+		return nil, nil, errors.New(defLang.Language("web_excel_sheet_not_found"))
 	}
 	if isInst {
 		return GetExcelData(sheet, fields, common.KvMap{"import_from": common.HostAddMethodExcel}, true, headerRow, defLang)
 	} else {
 		return GetRawExcelData(sheet, common.KvMap{"import_from": common.HostAddMethodExcel}, headerRow, defLang)
 	}
-
-	//return GetExcelData(sheet, fields, common.KvMap{"import_from": common.HostAddMethodExcel}, false, headerRow, defLang)
 }
 
 //GetInstData get inst data

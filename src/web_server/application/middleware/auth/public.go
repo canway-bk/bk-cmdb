@@ -13,15 +13,16 @@
 package auth
 
 import (
-	"configcenter/src/common"
-	"configcenter/src/common/blog"
-	"configcenter/src/common/util"
-	"configcenter/src/web_server/application/middleware/types"
 	"encoding/json"
 	"strings"
 
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
+
+	"configcenter/src/common"
+	"configcenter/src/common/blog"
+	"configcenter/src/common/util"
+	"configcenter/src/web_server/application/middleware/types"
 )
 
 type publicAuth struct {
@@ -112,6 +113,9 @@ func (m *publicAuth) ValidResAccess(pathArr []string, c *gin.Context) bool {
 	if strings.Contains(pathStr, types.BK_INST_ASSOCIATION_TOPO_SEARCH) {
 		return true
 	}
+	if strings.Contains(pathStr, types.BK_INST_ASSOCIATION_OWNER_SEARCH) {
+		return true
+	}
 	//valid resource config
 	if types.ResPatternRegexp.MatchString(pathStr) {
 		blog.Debug("valid resource config: %v", pathStr)
@@ -178,9 +182,12 @@ func (m *publicAuth) ValidResAccess(pathArr []string, c *gin.Context) bool {
 		//valid system config exclude resource
 		path3 := pathArr[3]
 		if util.InArray(path3, types.BK_CC_MODEL_PRE) {
-			//valid model config privilege
-			sysPrivi := session.Get("sysPrivi")
-			return validSysConfigPrivi(sysPrivi, types.BK_CC_MODEL)
+			//only admin config model privilege
+			if "1" == role {
+				return true
+			} else {
+				return false
+			}
 		}
 		if util.InArray(path3, types.BK_CC_EVENT_PRE) {
 			//valid event config privilege

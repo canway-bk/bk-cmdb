@@ -41,6 +41,19 @@
                     </label>
                 </div>
             </div>
+            <div class="screening-group screening-group-scope" v-if="isShowScope">
+                <label class="screening-group-label">{{$t("Hosts['搜索范围']")}}</label>
+                <div class="screening-group-item screening-group-item-scope">
+                    <label class="bk-form-checkbox">
+                        <input type="checkbox" checked disabled>
+                        <span>{{$t("Hosts['未分配主机']")}}</span>
+                    </label>
+                    <label class="bk-form-checkbox">
+                        <input type="checkbox" v-model="isShowAssigned">
+                        <span>{{$t("Hosts['已分配主机']")}}</span>
+                    </label>
+                </div>
+            </div>
             <template v-for="(column, index) in localQueryColumns">
                 <div class="screening-group" v-if="column['bk_property_id'] !== 'bk_host_innerip' && column['bk_property_id'] !== 'bk_host_outerip'">
                     <label class="screening-group-label">{{getColumnLabel(column)}}</label>
@@ -117,7 +130,7 @@
                 </div>
             </template>
             <div class="screening-btn" ref="screeningBtn">
-                <bk-button type="primary" @click.prevent="refresh">{{$t('HostResourcePool[\'刷新查询\']')}}</bk-button>
+                <bk-button type="primary" :loading="$loading('hostSearch')" @click.prevent="refresh">{{$t('HostResourcePool[\'刷新查询\']')}}</bk-button>
             </div>
         </form>
     </div>
@@ -146,6 +159,10 @@
             isShowBiz: {
                 type: Boolean,
                 default: true
+            },
+            isShowScope: {
+                type: Boolean,
+                default: true
             }
         },
         data () {
@@ -155,8 +172,9 @@
                     'text': '',
                     'bk_host_innerip': true,
                     'bk_host_outerip': true,
-                    'exact': 1
+                    'exact': 0
                 },
+                isShowAssigned: false,
                 localQueryColumnData: {},
                 localQueryColumns: [],
                 operators: {
@@ -205,7 +223,7 @@
             }
         },
         computed: {
-            ...mapGetters(['quickSearchParams']),
+            ...mapGetters(['hostSearch']),
             ipFlag () {
                 let flag = []
                 if (this['ip']['bk_host_innerip']) {
@@ -220,12 +238,88 @@
                 let ipData = []
                 this['ip']['text'].split(/\n|;|；|,|，/).map(ip => {
                     if (ip) {
-                        ipData.push(ip)
+                        ipData.push(ip.trim())
                     }
                 })
                 return ipData
             },
             filter () {
+                return this.calcSearchParams()
+            }
+        },
+        watch: {
+            queryColumns (queryColumns) {
+                let localQueryColumns = []
+                let localQueryColumnData = {}
+                queryColumns.map(column => {
+                    let {
+                        bk_property_id: bkPropertyId,
+                        bk_property_type: bkPropertyType,
+                        bk_obj_id: bkObjId
+                    } = column
+                    let columnProperty = this.getColumnProperty(bkPropertyId, bkObjId)
+                    if (columnProperty) {
+                        localQueryColumns.push(column)
+                        let operatorType = 'default'
+                        if (this.typeOfChar.indexOf(bkPropertyType) !== -1) {
+                            operatorType = 'char'
+                        } else if (this.typeOfDate.indexOf(bkPropertyType) !== -1) {
+                            operatorType = 'date'
+                        }
+                        localQueryColumnData[bkPropertyId] = {
+                            field: bkPropertyId,
+                            value: operatorType === 'date' ? [] : '',
+                            operator: this.operators[operatorType][0]['value'],
+                            'bk_obj_id': bkObjId
+                        }
+                    }
+                })
+                this.localQueryColumns = localQueryColumns
+                this.localQueryColumnData = localQueryColumnData
+            },
+            filter (filter) {
+                this.$emit('filterChange', this.$deepClone(filter))
+            },
+            queryColumnData ({bk_biz_id: bkBizId, ip, condition}) {
+                if (bkBizId) {
+                    this.bkBizId = bkBizId
+                }
+                if (ip) {
+                    this['ip']['text'] = ip['data'].join(',')
+                    this['ip']['bk_host_innerip'] = ip['bk_host_innerip']
+                    this['ip']['bk_host_outerip'] = ip['bk_host_outerip']
+                    this['ip']['exact'] = ip['exact']
+                }
+                if (condition) {
+                    condition.map(queryCondition => {
+                        queryCondition.condition.map(({field, operator, value}) => {
+                            if (this.localQueryColumnData.hasOwnProperty(field)) {
+                                this.localQueryColumnData[field]['operator'] = operator
+                                this.localQueryColumnData[field]['value'] = value
+                            }
+                        })
+                    })
+                }
+            },
+            localQueryColumns () {
+                this.$nextTick(() => {
+                    this.calcRefreshPosition()
+                })
+            }
+        },
+        created () {
+            this.setHostSearchParams()
+            this.$emit('filterChange', this.$deepClone(this.filter))
+        },
+        methods: {
+            setHostSearchParams () {
+                this.ip.text = this.hostSearch.ip
+                this.ip.exact = this.hostSearch.exact
+                this.ip['bk_host_innerip'] = this.hostSearch.innerip
+                this.ip['bk_host_outerip'] = this.hostSearch.outerip
+                this.isShowAssigned = this.hostSearch.assigned
+            },
+            calcSearchParams () {
                 let filter = {
                     bk_biz_id: this.bkBizId,
                     ip: {
@@ -233,7 +327,27 @@
                         exact: this.ip.exact,
                         data: this.ipData
                     },
-                    condition: []
+                    condition: [{
+                        'bk_obj_id': 'biz',
+                        'condition': [],
+                        fields: []
+                    }]
+                }
+                let bizCondition = filter.condition[0]['condition']
+                if (this.isShowScope) {
+                    if (!this.isShowAssigned) {
+                        bizCondition.push({
+                            field: 'default',
+                            operator: '$eq',
+                            value: 1
+                        })
+                    }
+                } else {
+                    bizCondition.push({
+                        field: 'default',
+                        operator: '$ne',
+                        value: 1
+                    })
                 }
                 Object.keys(this.localQueryColumnData).map(columnPropertyId => {
                     let column = this.localQueryColumnData[columnPropertyId]
@@ -249,7 +363,13 @@
                             }
                             filter.condition.push(condition)
                         }
-                        if (this.typeOfAsst.indexOf(property['bk_property_type']) !== -1) {
+                        if (property['bk_property_type'] === 'bool') {
+                            condition.condition.push({
+                                field: column.field,
+                                operator: column.operator,
+                                value: ['true', 'false'].includes(value) ? value === 'true' : value
+                            })
+                        } else if (this.typeOfAsst.indexOf(property['bk_property_type']) !== -1) {
                             filter.condition.push({
                                 'bk_obj_id': property['bk_asst_obj_id'],
                                 fields: [],
@@ -302,78 +422,7 @@
                     }
                 })
                 return filter
-            }
-        },
-        watch: {
-            'ip.text' (text) {
-                bus.$emit('setQuickSearchParams', {type: 'ip', text: text})
             },
-            queryColumns (queryColumns) {
-                let localQueryColumns = []
-                let localQueryColumnData = {}
-                queryColumns.map(column => {
-                    let {
-                        bk_property_id: bkPropertyId,
-                        bk_property_type: bkPropertyType,
-                        bk_obj_id: bkObjId
-                    } = column
-                    let columnProperty = this.getColumnProperty(bkPropertyId, bkObjId)
-                    if (columnProperty) {
-                        localQueryColumns.push(column)
-                        let operatorType = 'default'
-                        if (this.typeOfChar.indexOf(bkPropertyType) !== -1) {
-                            operatorType = 'char'
-                        } else if (this.typeOfDate.indexOf(bkPropertyType) !== -1) {
-                            operatorType = 'date'
-                        }
-                        localQueryColumnData[bkPropertyId] = {
-                            field: bkPropertyId,
-                            value: operatorType === 'date' ? [] : '',
-                            operator: this.operators[operatorType][0]['value'],
-                            'bk_obj_id': bkObjId
-                        }
-                    }
-                })
-                this.localQueryColumns = localQueryColumns
-                this.localQueryColumnData = localQueryColumnData
-            },
-            filter (filter) {
-                this.$emit('filterChange', Object.assign({}, filter))
-            },
-            queryColumnData ({bk_biz_id: bkBizId, ip, condition}) {
-                if (bkBizId) {
-                    this.bkBizId = bkBizId
-                }
-                if (ip) {
-                    this['ip']['text'] = ip['data'].join(',')
-                    this['ip']['bk_host_innerip'] = ip['bk_host_innerip']
-                    this['ip']['bk_host_outerip'] = ip['bk_host_outerip']
-                    this['ip']['exact'] = ip['exact']
-                }
-                if (condition) {
-                    condition.map(queryCondition => {
-                        queryCondition.condition.map(({field, operator, value}) => {
-                            if (this.localQueryColumnData.hasOwnProperty(field)) {
-                                this.localQueryColumnData[field]['operator'] = operator
-                                this.localQueryColumnData[field]['value'] = value
-                            }
-                        })
-                    })
-                }
-            },
-            quickSearchParams (quickSearchParams) {
-                this.initQuickSearchParams()
-            },
-            localQueryColumns () {
-                this.$nextTick(() => {
-                    this.calcRefreshPosition()
-                })
-            }
-        },
-        created () {
-            this.initQuickSearchParams()
-        },
-        methods: {
             bkBizSelected (app) {
                 this.$emit('bkBizSelected', app.value)
             },
@@ -430,11 +479,6 @@
                     this.localQueryColumnData[bkPropertyId]['operator'] = this.operators[operatorType][0]['value']
                 })
             },
-            initQuickSearchParams () {
-                if (this.quickSearchParams.type === 'ip') {
-                    this.ip.text = this.quickSearchParams.text
-                }
-            },
             refresh () {
                 this.$emit('refresh')
             },
@@ -451,10 +495,6 @@
             }
         },
         beforeDestroy () {
-            this.$store.commit('setQuickSearchParams', {
-                text: '',
-                type: 'ip'
-            })
             this.resetQueryColumnData()
         },
         components: {
@@ -469,6 +509,12 @@
     }
     .screening-group{
         padding: 20px 0 0 0;
+        &.screening-group-scope{
+            padding: 10px 0 0 0;
+            .screening-group-label{
+                padding: 0;
+            }
+        }
         .screening-group-label{
             display: block;
             font-size: 14px;

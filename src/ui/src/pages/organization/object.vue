@@ -10,34 +10,66 @@
 
 <template lang="html">
    <div class="host-resource-wrapper clearfix">
-        <v-breadcrumb class="breadcrumbs"></v-breadcrumb>
         <div class="bottom-contain clearfix">
             <div class="btn-group fl">
                 <template v-if="objId!=='biz'">
-                    <form :action="exportUrl" ref="export" style="display: inline-block;" method="POST">
-                        <input type="hidden" :value="table.chooseId.join(',')" name="bk_inst_id">
-                        <button class="bk-button" :disabled="!table.chooseId.length">
-                            <i class="icon-cc-derivation"></i>
-                            <span>{{$t("ModelManagement['导出']")}}</span>
-                        </button>
-                    </form>
-                    <button class="bk-button" @click="importSlider.isShow = true" :disabled="unauthorized.update">
-                        <i class="icon-cc-import"></i>
-                        <span>{{$t("ModelManagement['导入']")}}</span>
-                    </button>
+                    <bk-dropdown-menu ref="dropdown" class="mr10" :trigger="'click'">
+                        <bk-button class="dropdown-btn checkbox" type="default" slot="dropdown-trigger">
+                            <template v-if="table.chooseId.length">
+                                <i class="checkbox-btn" :class="{'checked': table.chooseId.length!==table.pagination.count, 'checked-all': table.chooseId.length===table.pagination.count}" @click.stop="tableChecked('cancel')"></i>
+                            </template>
+                            <template v-else>
+                                <i class="checkbox-btn" @click.stop="tableChecked('current')"></i>
+                            </template>
+                            <i :class="['bk-icon icon-angle-down',{'icon-flip': isDropdownShow}]"></i>
+                        </bk-button>
+                        <ul class="bk-dropdown-list" slot="dropdown-content">
+                            <li>
+                                <a href="javascript:;" @click="tableChecked('current')">{{$t("Common['全选本页']")}}</a>
+                            </li>
+                            <li>
+                                <a href="javascript:;" @click="tableChecked('all')">{{$t("Common['跨页全选']")}}</a>
+                            </li>
+                        </ul>
+                    </bk-dropdown-menu>
+                    <div class="bk-group bk-button-group mr10">
+                        <bk-button v-tooltip="$t('ModelManagement[\'导入\']')" type="default" class="bk-button vice-btn" @click="importSlider.isShow = true" :disabled="unauthorized.update">
+                            <i class="icon-cc-import"></i>
+                        </bk-button>
+                        <div class="btn-tooltip-wrapper" v-tooltip="$t('ModelManagement[\'导出\']')">
+                            <form :action="exportUrl" ref="export" style="display: inline-block;" method="POST">
+                                <input type="hidden" :value="table.chooseId.join(',')" name="bk_inst_id">
+                                <bk-button btnType="submit" class="bk-button vice-btn first" :disabled="!table.chooseId.length" title="test">
+                                    <i class="icon-cc-derivation"></i>
+                                </bk-button>
+                            </form>
+                        </div>
+                        <div class="btn-tooltip-wrapper" v-tooltip="$t('BusinessTopology[\'修改\']')">
+                            <bk-button type="default" class="vice-btn"
+                                :disabled="!table.chooseId.length"
+                                @click="multipleUpdate">
+                                <i class="icon-cc-edit"></i>
+                            </bk-button>
+                        </div>
+                        <div class="btn-tooltip-wrapper" v-tooltip="$t('Common[\'删除\']')">
+                            <bk-button type="default" v-if="objId !== 'biz'" class="bk-button delete-button mr10" :disabled="!table.chooseId.length" @click="confirmBatchDel">
+                                <i class="icon-cc-del"></i>
+                            </bk-button>
+                        </div>
+                    </div>
                 </template>
-                <button class="bk-button bk-primary bk-button-componey create-btn" @click="openObjectSlider('create')" :disabled="unauthorized.update">{{$t("Inst['立即创建']")}}</button>
+                <button class="bk-button bk-primary bk-button-componey create-btn mr10" @click="openObjectSlider('create')" :disabled="unauthorized.update">{{$t("Inst['立即创建']")}}</button>
             </div>
-            <div class="fr btn-group">
-                <button v-if="objId !== 'biz'" class="bk-button setting" @click="filing.isShow = true" v-tooltip="$t('Common[\'查看删除历史\']')">
+            <div class="fr bk-group bk-button-group">
+                <bk-button v-if="objId !== 'biz'" class="bk-button ml10" @click="filing.isShow = true" v-tooltip="$t('Common[\'查看删除历史\']')">
                     <i class="icon-cc-history"></i>
-                </button>
-                <button v-else class="bk-button setting" @click="filing.isShow = true" v-tooltip="$t('Common[\'查看归档历史\']')">
+                </bk-button>
+                <bk-button v-else class="bk-button ml10" @click="filing.isShow = true" v-tooltip="$t('Common[\'查看归档历史\']')">
                     <i class="icon-cc-history2"></i>
-                </button>
-                <button class="bk-button setting" @click="settingSlider.isShow = true" v-tooltip="$t('BusinessTopology[\'列表显示属性配置\']')">
+                </bk-button>
+                <bk-button class="bk-button " @click="settingSlider.isShow = true" v-tooltip="$t('BusinessTopology[\'列表显示属性配置\']')">
                     <i class="icon-cc-setting"></i>
-                </button>
+                </bk-button>
             </div>
             <div class="quick-search fr">
                 <div class="fl left-select">
@@ -71,11 +103,12 @@
             <v-object-table
                 :header="table.header"
                 :list="table.list"
-                :pagination="table.pagination"
+                :pagination.sync="table.pagination"
                 :defaultSort="table.defaultSort"
                 :checked.sync="table.chooseId"
                 :wrapperMinusHeight="150"
-                :loading="table.loading"
+                :loading="$loading('instSearch')"
+                :isCheckboxShow="false"
                 @handleRowClick="editObject"
                 @handleSortChange="setTableSort"
                 @handlePageChange="setTablePage"
@@ -93,7 +126,6 @@
             </v-object-table>
             <v-sideslider
                 :isShow.sync="slider.isShow"
-                :hasQuickClose="true"
                 :hasCloseConfirm="true"
                 :isCloseConfirmShow="slider.isCloseConfirmShow"
                 :title="slider.title"
@@ -110,6 +142,7 @@
                                 :active="slider.isShow && tab.activeName === 'attr'"
                                 :objId="objId"
                                 :isBatchUpdate="false"
+                                :isMultipleUpdate="attr.isMultipleUpdate"
                                 @closeSlider="closeObjectSlider"
                                 @submit="saveObjectAttr"
                                 @delete="confirmDelete">
@@ -124,7 +157,7 @@
                             </v-relevance>
                         </bk-tabpanel>
                         <bk-tabpanel name="history" :title="$t('HostResourcePool[\'变更记录\']')" :show="attr.type==='update'">
-                            <v-history :active="tab.activeName === 'history'" :type="objId" :instId="objId === 'biz' ? attr.formValues['bk_biz_id'] : attr.formValues['bk_inst_id']"></v-history>
+                            <v-history v-if="attr.type !== 'create'" :active="tab.activeName === 'history'" :type="objId" :instId="objId === 'biz' ? attr.formValues['bk_biz_id'] : attr.formValues['bk_inst_id']"></v-history>
                         </bk-tabpanel>
                     </bk-tab>
                 </div>
@@ -139,11 +172,13 @@
         </v-sideslider>
         <v-sideslider :isShow.sync="settingSlider.isShow" :hasQuickClose="true" :width="600" :title="settingSlider.title">
             <v-config-field
+                ref="configField"
                 slot="content"
                 :isShow="settingSlider.isShow"
                 :attrList="attr.formFields.filter(({bk_property_type:bkPropertyType}) => !['list', 'password'].includes(bkPropertyType))"
                 @apply="settingApply"
                 @cancel="settingSlider.isShow = false"
+                @resetFields="resetFields"
                 :objId="objId">
             </v-config-field>
         </v-sideslider>
@@ -168,11 +203,11 @@
     import vSideslider from '@/components/slider/sideslider'
     import vConfigField from './children/configField'
     import vDeleteHistory from '@/components/history/delete'
-    import vBreadcrumb from '@/components/common/breadcrumb/breadcrumb'
     export default {
         mixins: [Authority],
         data () {
             return {
+                isDropdownShow: false,
                 isSelectShow: false,
                 // 查询条件
                 filter: {
@@ -221,12 +256,14 @@
                 attr: {
                     type: 'update',
                     formFields: [],
-                    formValues: {}
+                    formValues: {},
+                    isMultipleUpdate: false
                 },
                 // 选项卡
                 tab: {
                     activeName: 'attr'
-                }
+                },
+                prevHistoryCount: 0
             }
         },
         computed: {
@@ -234,6 +271,7 @@
                 'bkSupplierAccount',
                 'usercustom'
             ]),
+
             ...mapGetters('navigation', ['activeClassifications']),
             // 当前路由对应的模型ID
             objId () {
@@ -327,6 +365,7 @@
                 if (!isShow && this.objId === 'biz') {
                     this.getTableList()
                 }
+                this.updateHistoryCount(isShow)
             },
             // 切换模型时，重新初始化表格
             objId () {
@@ -356,6 +395,29 @@
             }
         },
         methods: {
+            tableChecked (type) {
+                if (type === 'all') {
+                    this.getAllObjectId(true)
+                } else if (type === 'cancel') {
+                    this.table.chooseId = []
+                } else {
+                    let chooseId = []
+                    this.table.list.map(({bk_inst_id: bkInstId}) => chooseId.push(bkInstId))
+                    this.table.chooseId = chooseId
+                }
+            },
+            async resetFields () {
+                await this.getTableHeader()
+                this.$refs.configField.getUserAttr()
+            },
+            multipleUpdate () {
+                this.tab.activeName = 'attr'
+                this.slider.isShow = true
+                this.slider.title.text = this.$t('Inst[\'批量更新\']')
+                this.attr.isMultipleUpdate = true
+                this.attr.formValues = {bk_inst_id: this.table.chooseId.join(',')}
+                this.attr.type = 'create'
+            },
             closeObjectSliderConfirm () {
                 this.slider.isCloseConfirmShow = this.$refs.attribute.isCloseConfirmShow()
             },
@@ -513,7 +575,7 @@
             // 获取表格列表
             getTableList () {
                 this.table.loading = true
-                return this.$axios.post(this.axiosConfig.url, this.axiosConfig.params).then(res => {
+                return this.$axios.post(this.axiosConfig.url, this.axiosConfig.params, {id: 'instSearch'}).then(res => {
                     let data = {
                         count: 0,
                         info: []
@@ -581,11 +643,30 @@
             },
             // 保存新增/修改的属性
             saveObjectAttr (formData, {bk_biz_id: bizId, bk_inst_id: instId}) {
-                if (this.attr.type === 'update') {
+                if (this.attr.type === 'create' && this.attr.isMultipleUpdate) {
+                    let params = {
+                        update: []
+                    }
+                    this.table.chooseId.map(id => {
+                        params.update.push({
+                            datas: formData,
+                            inst_id: id
+                        })
+                    })
+                    this.$axios.put(`inst/${this.bkSupplierAccount}/${this.objId}/batch`, params).then(res => {
+                        if (res.result) {
+                            this.setTablePage(1)
+                            this.closeObjectSlider()
+                            this.$alertMsg(this.$t("Common['修改成功']"), 'success')
+                        } else {
+                            this.$alertMsg(res['bk_error_msg'])
+                        }
+                    })
+                } else if (this.attr.type === 'update') {
                     let updateUrl = this.objId === 'biz'
                         ? `biz/${this.bkSupplierAccount}/${bizId}`
                         : `inst/${this.bkSupplierAccount}/${this.objId}/${instId}`
-                    this.$axios.put(updateUrl, formData).then(res => {
+                    this.$axios.put(updateUrl, formData, {id: 'editAttr'}).then(res => {
                         if (res.result) {
                             this.setTablePage(1)
                             this.closeObjectSlider()
@@ -596,7 +677,7 @@
                     })
                 } else {
                     let createUrl = this.objId === 'biz' ? `biz/${this.bkSupplierAccount}` : `inst/${this.bkSupplierAccount}/${this.objId}`
-                    this.$axios.post(createUrl, formData).then(res => {
+                    this.$axios.post(createUrl, formData, {id: 'editAttr'}).then(res => {
                         if (res.result) {
                             this.setTablePage(1)
                             this.closeObjectSlider()
@@ -607,6 +688,32 @@
                     })
                 }
             },
+            confirmBatchDel () {
+                this.$bkInfo({
+                    title: this.$tc("Inst['确定删除选中的实例']", this.table.chooseId.length, {number: this.table.chooseId.length}),
+                    confirmFn: () => {
+                        this.batchDeleteInst()
+                    }
+                })
+            },
+            async batchDeleteInst () {
+                try {
+                    const params = {
+                        delete: {
+                            inst_ids: this.table.chooseId
+                        }
+                    }
+                    const res = await this.$axios.delete(`inst/${this.bkSupplierAccount}/${this.objId}/batch`, {data: params})
+                    if (res.result) {
+                        this.table.chooseId = []
+                        this.setTablePage(1)
+                    } else {
+                        this.$alertMsg(res['bk_error_msg'])
+                    }
+                } catch (e) {
+                    this.$alertMsg(e.message || e.data['bk_error_msg'] || e.statusText)
+                }
+            },
             // 删除模型实例前进行确认
             confirmDelete (data) {
                 let {
@@ -615,6 +722,7 @@
                 } = data
                 this.$bkInfo({
                     title: this.objId === 'biz' ? this.$t("Common['确认要归档']", {name: this.objId === 'biz' ? bizName : instName}) : this.$t("Common['确认要删除']", {name: this.objId === 'biz' ? bizName : instName}),
+                    content: this.objId === 'biz' ? this.$t("Inst['归档提示']") : '',
                     confirmFn: () => {
                         this.deleteObject(data)
                     }
@@ -634,7 +742,8 @@
                 try {
                     const res = await this.$axios({
                         method: method,
-                        url: url
+                        url: url,
+                        id: 'instDelete'
                     })
                     if (res.result) {
                         this.setTablePage(1)
@@ -651,6 +760,7 @@
             editObject (item) {
                 this.attr.formValues = Object.assign({}, item)
                 this.attr.type = 'update'
+                this.attr.isMultipleUpdate = false
                 this.openObjectSlider('update', item['bk_inst_name'])
             },
             // 打开侧滑界面
@@ -658,11 +768,13 @@
                 this.tab.activeName = 'attr'
                 this.attr.type = type
                 if (type === 'create') {
+                    this.attr.isMultipleUpdate = false
                     this.slider.title.icon = 'icon-cc-create-business'
                     this.slider.title.text = `${this.$t("Common['创建']")} ${this.objName}`
                 } else {
                     this.slider.title.icon = 'icon-cc-edit'
-                    this.slider.title.text = `${this.$t("Common['编辑']")} ${this.objName}`
+                    let name = this.objId === 'biz' ? this.attr.formValues['bk_biz_name'] : this.attr.formValues['bk_inst_name']
+                    this.slider.title.text = `${this.$t("Common['编辑']")} ${this.objName} ${name}`
                 }
                 this.slider.isShow = true
             },
@@ -702,18 +814,19 @@
                     return property.option || []
                 }
                 return []
+            },
+            updateHistoryCount (isShow) {
+                if (this.prevHistoryCount) {
+                    this.$store.commit('navigation/updateHistoryCount', isShow ? -1 : 1)
+                }
             }
+        },
+        created () {
+            this.prevHistoryCount = this.$store.state.navigation.historyCount
         },
         mounted () {
             this.initTable()
         },
-        // beforeRouteUpdate (to, from, next) {
-        //     this.isSelectShow = false
-        //     next()
-        //     this.$nextTick(() => {
-        //         this.isSelectShow = true
-        //     })
-        // },
         components: {
             vObjectTable,
             vObjectAttr,
@@ -724,8 +837,7 @@
             vConfigField,
             vDeleteHistory,
             vAssociationList,
-            vNewAssociation,
-            vBreadcrumb
+            vNewAssociation
         }
     }
 </script>
@@ -736,30 +848,10 @@
     $primaryColor: #f9f9f9; //主要
     $fnMainColor: #bec6de; //文案主要颜色
     $primaryHoverColor: #6b7baa; //鼠标移上 主要颜色
-    .breadcrumbs{
-        padding: 8px 20px;
-    }
     .main-btn{  //主要按钮
         background: $primaryHoverColor;
         &:hover{
             background: #4d597d;
-        }
-    }
-    .vice-btn{  //次要按钮 取消按钮
-        border: 1px solid #e6e9f2;
-        color:  $primaryHoverColor;
-        cursor: pointer;
-        &:hover{
-            border-color: $primaryHoverColor;
-        }
-    }
-    .icon-btn{  //单纯图标的按钮
-        background: #ffffff;
-        color: $primaryHoverColor;
-        cursor: pointer;
-        &:hover{
-            background: $primaryHoverColor;
-            color: $defaultColor;
         }
     }
     .no-border-btn{    //无边框按钮
@@ -773,9 +865,11 @@
     }
     .btn-group {
         font-size: 0;
+        .dropdown-btn {
+            width: 75px;
+        }
     }
     .bk-button{
-        margin-right: 10px;
         &.import,
         &.export,
         &.setting{
@@ -822,7 +916,7 @@
             margin: 0;
         }
         .bottom-contain{
-            padding:0 20px;
+            padding:20px 20px 0;
         }
     }
     .bk-button-componey{
@@ -1011,9 +1105,6 @@
     .bk-form-item.is-required .bk-label:after {
         position: absolute !important;
     }
-</style>
-
-<style lang="scss">
     .host-resource-wrapper{
         .slide-content{
             .bk-tab2{
@@ -1034,9 +1125,6 @@
             }
         }
     }
-</style>
-
-<style lang="scss">
     .business-wrapper{
         .bk-tab2{
             .bk-tab2-nav{

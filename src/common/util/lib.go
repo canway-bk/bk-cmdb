@@ -13,11 +13,12 @@
 package util
 
 import (
-	"configcenter/src/common"
-	"configcenter/src/common/blog"
 	"net/http"
 
 	restful "github.com/emicklei/go-restful"
+
+	"configcenter/src/common"
+	"configcenter/src/common/blog"
 )
 
 func InStrArr(arr []string, key string) bool {
@@ -29,17 +30,21 @@ func InStrArr(arr []string, key string) bool {
 	return false
 }
 
+func GetLanguage(header http.Header) string {
+	return header.Get(common.BKHTTPLanguage)
+}
+
 // GetActionLanguage returns language form hender
 func GetActionLanguage(req *restful.Request) string {
 	language := req.HeaderParameter(common.BKHTTPLanguage)
 	if "" == language {
 		language = "zh-cn"
 	}
-	blog.Infof("request language: %s, header: %v", language, req.Request.Header)
+	blog.V(5).Infof("request language: %s, header: %v", language, req.Request.Header)
 	return language
 }
 
-// GetActionLanguage returns user form hender
+// GetActionUser returns user form hender
 func GetActionUser(req *restful.Request) string {
 	user := req.HeaderParameter(common.BKHTTPHeaderUser)
 	return user
@@ -49,6 +54,18 @@ func GetActionUser(req *restful.Request) string {
 func GetActionOnwerID(req *restful.Request) string {
 	ownerID := req.HeaderParameter(common.BKHTTPOwnerID)
 	return ownerID
+}
+
+func GetUser(header http.Header) string {
+	return header.Get(common.BKHTTPHeaderUser)
+}
+
+func GetOwnerID(header http.Header) string {
+	return header.Get(common.BKHTTPOwnerID)
+}
+
+func GetOwnerIDAndUser(header http.Header) (string, string) {
+	return header.Get(common.BKHTTPOwnerID), header.Get(common.BKHTTPHeaderUser)
 }
 
 // GetActionOnwerIDAndUser returns owner_uin and user form hender
@@ -73,3 +90,15 @@ func GetActionOnwerIDByHTTPHeader(header http.Header) string {
 	ownerID := header.Get(common.BKHTTPOwnerID)
 	return ownerID
 }
+
+// GetHTTPCCRequestID return configcenter request id from http header
+func GetHTTPCCRequestID(header http.Header) string {
+	rid := header.Get(common.BKHTTPCCRequestID)
+	return rid
+}
+
+type Int64Slice []int64
+
+func (p Int64Slice) Len() int           { return len(p) }
+func (p Int64Slice) Less(i, j int) bool { return p[i] < p[j] }
+func (p Int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

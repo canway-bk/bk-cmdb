@@ -15,29 +15,36 @@ package util
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"reflect"
 	"strconv"
 )
+
+func GetStrByInterface(a interface{}) string {
+	if nil == a {
+		return ""
+	}
+	return fmt.Sprintf("%v", a)
+}
 
 func GetIntByInterface(a interface{}) (int, error) {
 	id := 0
 	var err error
-	switch a.(type) {
+	switch val := a.(type) {
 	case int:
-		id = a.(int)
+		id = val
 	case int32:
-		id = int(a.(int32))
+		id = int(val)
 	case int64:
-		id = int(a.(int64))
+		id = int(val)
 	case json.Number:
 		var tmpID int64
-		tmpID, err = a.(json.Number).Int64()
+		tmpID, err = val.Int64()
 		id = int(tmpID)
 	case float64:
-		tmpID := a.(float64)
-		id = int(tmpID)
+		id = int(val)
 	case float32:
-		tmpID := a.(float32)
-		id = int(tmpID)
+		id = int(val)
 	case string:
 		var tmpID int64
 		tmpID, err = strconv.ParseInt(a.(string), 10, 64)
@@ -128,6 +135,24 @@ func SliceStrToInt(sliceStr []string) ([]int, error) {
 	return sliceInt, nil
 }
 
+// SliceStrToInt64 将字符串切片转换为整型切片
+func SliceStrToInt64(sliceStr []string) ([]int64, error) {
+	sliceInt := make([]int64, 0)
+	for _, idStr := range sliceStr {
+
+		if idStr == "" {
+			continue
+		}
+
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			return []int64{}, err
+		}
+		sliceInt = append(sliceInt, id)
+	}
+	return sliceInt, nil
+}
+
 // GetStrValsFromArrMapInterfaceByKey get []string from []map[string]interface{}, Do not consider errors
 func GetStrValsFromArrMapInterfaceByKey(arrI []interface{}, key string) []string {
 	var ret []string
@@ -143,4 +168,23 @@ func GetStrValsFromArrMapInterfaceByKey(arrI []interface{}, key string) []string
 
 	return ret
 
+}
+
+func ConverToInterfaceSlice(value interface{}) []interface{} {
+	rflval := reflect.ValueOf(value)
+	for rflval.CanAddr() {
+		rflval = rflval.Elem()
+	}
+	if rflval.Kind() != reflect.Slice {
+		return []interface{}{value}
+	}
+
+	result := []interface{}{}
+	for i := 0; i < rflval.Len(); i++ {
+		if rflval.Index(i).CanInterface() {
+			result = append(result, rflval.Index(i).Interface())
+		}
+	}
+
+	return result
 }

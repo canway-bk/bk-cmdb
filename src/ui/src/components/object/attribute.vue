@@ -22,7 +22,7 @@
                                       && property['bk_property_type'] !== 'list'
                                       && property['bk_property_type'] !== 'password'">
                                     <span class="attribute-item-label has-colon" :title="property['bk_property_name']">{{property['bk_property_name']}}</span>
-                                    <span class="attribute-item-value" :title="getFieldValue(property)">{{getFieldValue(property)}}</span>
+                                    <span class="attribute-item-value" :title="getFieldValue(property)">{{getFieldValue(property) === '' ? '--' : getFieldValue(property)}}</span>
                                 </template>
                                 <template v-else-if="property['bk_property_type'] === 'list'">
                                     <span class="attribute-item-label has-colon" :title="property['bk_property_name']">{{property['bk_property_name']}}</span>
@@ -66,7 +66,7 @@
                                             v-if="checkIsShowField(property)">
                                             <div>
                                                 <label :class="[{'required': property['isrequired']}]" class="bk-form-checkbox bk-checkbox-small">
-                                                    <input type="checkbox" v-if="isMultipleUpdate && property['bk_property_type'] !== 'bool'"
+                                                    <input type="checkbox" v-if="isMultipleUpdate"
                                                         v-model="multipleEditableFields[property['bk_property_id']]"
                                                         @change="clearFieldValue(property)">
                                                     <span>{{property['bk_property_name']}}</span>
@@ -128,7 +128,6 @@
                                                         type="checkbox"
                                                         v-model="localValues[property['bk_property_id']]"
                                                         :disabled="checkIsFieldDisabled(property)">
-                                                    </input>
                                                 </span>
                                                 <input type="text" class="bk-form-input" v-else-if="property['bk_property_type'] === 'int'"
                                                     :disabled="checkIsFieldDisabled(property)" maxlength="11"
@@ -162,18 +161,18 @@
         <template v-if="showBtnGroup">
             <div class="attribute-btn-group" v-if="displayType==='list' && type === 'update'">
                 <bk-button type="primary" class="bk-button main-btn" @click.prevent="changeDisplayType('form')" :disabled="unauthorized.update">{{$t("Common['属性编辑']")}}</bk-button>
-                <button v-if="type==='update' && showDelete && !isMultipleUpdate" class="bk-button del-btn" @click.prevent="deleteObject" :disabled="unauthorized.delete">
+                <bk-button type="default" :loading="$loading('instDelete')" v-if="type==='update' && showDelete && !isMultipleUpdate" class="del-btn" @click.prevent="deleteObject" :disabled="unauthorized.delete">
                     <template v-if="objId !== 'biz'">
                         {{$t("Common['删除']")}}
                     </template>
                     <template v-else>
                         {{$t("Inst['归档']")}}
                     </template>
-                </button>
+                </bk-button>
             </div>
             <div class="attribute-btn-group" v-else-if="!isMultipleUpdate || isMultipleUpdate && hasEditableProperties">
-                <bk-button type="primary" v-if="type==='create'" class="main-btn" @click.prevent="submit" :disabled="errors.any() || !Object.keys(formData).length || unauthorized.update">{{$t("Common['保存']")}}</bk-button>
-                <bk-button type="primary" v-if="type==='update'" class="main-btn" @click.prevent="submit" :disabled="errors.any() || !Object.keys(formData).length || unauthorized.update">{{$t("Common['保存']")}}</bk-button>
+                <bk-button type="primary" :loading="$loading('editAttr')" v-if="type==='create'" class="main-btn" @click.prevent="submit" :disabled="errors.any() || !Object.keys(formData).length || unauthorized.update">{{$t("Common['保存']")}}</bk-button>
+                <bk-button type="primary" :loading="$loading('editAttr')" v-if="type==='update'" class="main-btn" @click.prevent="submit" :disabled="errors.any() || !Object.keys(formData).length || unauthorized.update">{{$t("Common['保存']")}}</bk-button>
                 <bk-button type="default" v-if="type==='update'" class="vice-btn" @click.prevent="changeDisplayType('list')">{{$t("Common['取消']")}}</bk-button>
             </div>
         </template>
@@ -279,7 +278,13 @@
                 this.groupOrder.map(group => {
                     if (this.bkPropertyGroups.hasOwnProperty(group)) {
                         groupEditable[group] = this.bkPropertyGroups[group]['properties'].some(property => {
-                            return property['editable'] && !property['bk_isapi']
+                            if (this.isMultipleUpdate) {
+                                return property['editable'] && !property['bk_isapi'] && !property['isonly']
+                            } else if (this.type === 'create') {
+                                return !property['bk_isapi']
+                            } else {
+                                return property['editable'] && !property['bk_isapi']
+                            }
                         })
                     }
                 })
@@ -417,10 +422,10 @@
                             return bkPropertyId === key
                         })
                         if (property['bk_property_type'] === 'enum') {
-                            let isDefault = property.option.find(({id}) => {
+                            let enumProperty = property.option.find(({id}) => {
                                 return id === this.formData[key]
-                            })['is_default']
-                            if (!isDefault) {
+                            })
+                            if (enumProperty && !enumProperty['is_default']) {
                                 isConfirmShow = true
                                 break
                             }
@@ -554,7 +559,7 @@
                 } = property
                 if (bkPropertyId === 'bk_biz_name' && this.formValues[bkPropertyId] === '蓝鲸') {
                     return true
-                } else if (this.isMultipleUpdate && bkPropertyType !== 'bool') {
+                } else if (this.isMultipleUpdate) {
                     return !this.multipleEditableFields[bkPropertyId]
                 } else if (this.type === 'create') {
                     return false
@@ -599,6 +604,7 @@
             resetData () {
                 this.displayType = 'list'
                 this.localValues = {}
+                this.multipleEditableFields = {}
                 this.$forceUpdate()
             },
             getValidateRules (property) {
@@ -608,7 +614,7 @@
                     option,
                     isrequired
                 } = property
-                if (isrequired) {
+                if (isrequired && !this.isMultipleUpdate) {
                     rules['required'] = true
                 }
                 if (property.hasOwnProperty('option') && option) {
@@ -640,8 +646,6 @@
                         if (Object.keys(this.formData).length) {
                             this.$emit('submit', this.formData, Object.assign({}, this.formValues))
                         }
-                    } else {
-                        this.$alertMsg(this.errors.first(Object.keys(this.errors.collect())[0]))
                     }
                 })
             },
@@ -776,6 +780,7 @@
             }
             .attribute-item-field{
                 display: inline-block;
+                height: 36px;
             }
         }
     }

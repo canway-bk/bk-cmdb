@@ -7,6 +7,7 @@
                         <label class="attribute-item-label fl" :class="{'required': property['isrequired']}">
                             {{property['bk_property_name']}}
                         </label>
+                        <i class="icon-tooltips" v-if="property['placeholder']" v-tooltip="htmlEncode(property['placeholder'])"></i>
                         <div class="attribute-item-field fl" :style="{zIndex: property['bk_asst_obj_id'] === 'host' && isHostShow ? 998 : attribute[bkObjId].length - index}">
                             <input v-if="property['bk_property_type'] === 'int'" 
                                 type="text" maxlength="11" class="bk-form-input"
@@ -77,7 +78,7 @@
                                 {{getEnumLabel(formValues[property['bk_property_id']], property)}}
                             </template>
                             <template v-else>
-                                {{localValues[property['bk_property_id']]}}
+                                {{localValues[property['bk_property_id']] === '' ? '--' : localValues[property['bk_property_id']]}}
                             </template>
                         </div>
                     </div>
@@ -85,7 +86,7 @@
             </template>
         </ul>
         <div class="attribute-btn">
-            <bk-button type="primary" class="bk-button main-btn" @click="doSubmit" :disabled="errors.any()" v-if="displayType === 'form'">{{$t('Common[\'保存\']')}}</bk-button>
+            <bk-button type="primary" class="bk-button main-btn" @click="doSubmit" :loading="$loading('editAttr')" :disabled="errors.any()" v-if="displayType === 'form'">{{$t('Common[\'保存\']')}}</bk-button>
             <template v-if="!editable">
                 <span class="tooltip-wrapper" v-tooltip="{content: $t('Common[\'关键业务不能够修改\']'), classes: 'topo-tip'}">
                     <bk-button type="primary" class="bk-button main-btn" disabled v-if="displayType === 'list'">{{$t('Common[\'编辑\']')}}</bk-button>
@@ -96,7 +97,7 @@
             </template>
             <bk-button type="default" class="bk-button vice-btn cancel-btn" @click="toggleDisplayType('list')" v-if="type === 'update' && displayType === 'form'">{{$t('Common[\'取消\']')}}</bk-button>
             <bk-button type="default" class="bk-button vice-btn cancel-btn" @click="cancelCreate" v-if="type === 'create'">{{$t('Common[\'取消\']')}}</bk-button>
-            <button class="del-btn" @click="doDelete" v-if="type === 'update' && displayType === 'form'">{{$t('Common[\'删除\']')}}</button>
+            <bk-button class="del-btn" @click="doDelete" :loading="$loading('deleteAttr')" v-if="type === 'update' && displayType === 'form'">{{$t('Common[\'删除\']')}}</bk-button>
         </div>
     </div>
 </template>
@@ -256,7 +257,7 @@
                 if (Array.isArray(value)) {
                     return value.map(({bk_inst_name: bkInstName}) => bkInstName).join(',')
                 }
-                return value
+                return (value === '' || value === undefined) ? '--' : value
             },
             getEnumLabel (value, property) {
                 if (value) {
@@ -267,6 +268,7 @@
                         return obj.name
                     }
                 }
+                return '--'
             },
             setDate (date, bkPropertyId) {
                 if (this.localValues.hasOwnProperty(bkPropertyId)) {
@@ -369,6 +371,13 @@
             },
             cancelCreate () {
                 this.$emit('cancel')
+            },
+            htmlEncode (str) {
+                let c = document.createElement('div')
+                c.innerHTML = str
+                let output = c.innerText
+                c = null
+                return output
             }
         },
         components: {
@@ -410,6 +419,14 @@
                     right: 18px;
                     top: 0;
                 }
+            }
+            .icon-tooltips{
+                display: inline-block;
+                vertical-align: middle;
+                width: 16px;
+                height: 16px;
+                margin: 10px 0 0 10px;
+                background: url('../../../common/images/icon/icon-info-tips.png') no-repeat;
             }
             .attribute-item-field{
                 width: 460px;

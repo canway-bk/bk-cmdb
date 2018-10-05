@@ -10,7 +10,6 @@
 
 <template>
     <div class="auditing-content">
-        <v-breadcrumb class="breadcrumbs"></v-breadcrumb>
         <div class="right-content">
             <div class="record-content">
                 <div class="title-content clearfix">
@@ -80,15 +79,15 @@
                         </div>
                     </div>
                     <div class="group-content group-content-btn fr">
-                        <bk-button type="primary" class="" @click="setCurrentPage(1)">{{$t('OperationAudit[\'查询\']')}}</bk-button>
+                        <bk-button type="primary" :loading="$loading('auditSearch')" class="" @click="setCurrentPage(1)">{{$t('OperationAudit[\'查询\']')}}</bk-button>
                     </div>
                 </div>
                 <div class="table-content">
                     <v-table ref="table"
                         :header="tableHeader"
                         :list="tableList"
-                        :pagination="pagination"
-                        :loading="isLoading"
+                        :pagination.sync="pagination"
+                        :loading="$loading('auditSearch')"
                         :defaultSort="defaultSort"
                         :wrapperMinusHeight="150"
                         @handlePageChange="setCurrentPage"
@@ -111,17 +110,14 @@
     import vSideslider from '@/components/slider/sideslider'
     import vHistoryDetails from '@/components/history/details'
     import vTable from '@/components/table/table'
-    import vBreadcrumb from '@/components/common/breadcrumb/breadcrumb'
     export default {
         components: {
             vTable,
             vSideslider,
-            vHistoryDetails,
-            vBreadcrumb
+            vHistoryDetails
         },
         data () {
             return {
-                isLoading: false,
                 isShowClearIcon: {
                     'classify': false,
                     'biz': false
@@ -314,11 +310,11 @@
                 }]
             }
         },
-        created () {
+        async created () {
+            await this.getBkBizList()
             this.getTableList()
-            if (!this.bkBizList.length) {
-                this.getBkBizList()
-            }
+            // if (!this.bkBizList.length) {
+            //     }
             if (this.language === 'en') {
                 this.ranges = this.rangesForEn
             } else {
@@ -329,17 +325,13 @@
             ...mapActions(['getBkBizList']),
             /* 获取表格数据 */
             getTableList () {
-                this.isLoading = true
-                this.$axios.post('audit/search/', this.searchParams).then((res) => {
+                this.$axios.post('audit/search/', this.searchParams, {id: 'auditSearch'}).then((res) => {
                     if (res.result) {
                         this.initTableList(res.data.info)
                         this.pagination.count = res.data.count
                     } else {
                         this.$alertMsg(res['bk_error_msg'])
                     }
-                    this.isLoading = false
-                }).catch(() => {
-                    this.isLoading = false
                 })
             },
             /* 根据返回的结果设置一些表格显示内容 */
@@ -405,9 +397,6 @@
         height: 100%;
         font-size: 14px;
         color: $primaryColor;
-        .breadcrumbs{
-            padding: 8px 20px;
-        }
         .dn{
             display: none;
         }
@@ -477,6 +466,7 @@
                 .title-content{
                     width: 100%;
                     position: relative;
+                    padding-top: 20px;
                     z-index: 2;
                     .group-content{
                         float:left;

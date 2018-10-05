@@ -29,7 +29,7 @@
 
                 <ul class="list-wrapper">
                     <li v-for="(property, index) in hideList" @click="addItem(property)" ref="hideItem" :key="index">
-                        {{property['bk_property_name']}}
+                        <span :title="property['bk_property_name']">{{property['bk_property_name']}}</span>
                         <i class="bk-icon icon-angle-right"></i>
                     </li>
                 </ul>
@@ -42,13 +42,13 @@
                 </div>
                 <draggable class="content-right" v-model="shownList" :options="{animation: 150}">
                     <div v-for="(property, index) in shownList" :key="index" class="item">
-                        <i class="icon-triple-dot"></i><span>{{property['bk_property_name']}}</span><i class="bk-icon icon-eye-slash-shape" @click="removeItem(index)"></i>
+                        <i class="icon-triple-dot"></i><span :title="property['bk_property_name']">{{property['bk_property_name']}}</span><i class="bk-icon icon-eye-slash-shape" @click="removeItem(index)" v-tooltip="$t('Common[\'隐藏\']')"></i>
                     </div>
                 </draggable>
             </div>
         </div>
         <div class="bk-form-item bk-form-action content-button">
-            <bk-button class="btn" type="primary" @click="apply">
+            <bk-button class="btn" type="primary" :loading="$loading('userCustom')" @click="apply">
                 {{$t('Inst[\'应用\']')}}
             </bk-button>
             <bk-button class="vice-btn btn reinstate cancel" type="default" @click="cancel">
@@ -60,6 +60,8 @@
 
 <script type="text/javascript">
     import draggable from 'vuedraggable'
+    import sortUnicode from '@/common/js/sortUnicode'
+    import { sortArray } from '@/utils/util'
     export default {
         props: {
             shownFields: {
@@ -118,7 +120,7 @@
                     } = property
                     if (!bkIsapi) {
                         const isCurrentShownProperty = this.shownList.some(property => property['bk_obj_id'] === bkObjId && this.shownProperty.indexOf(bkPropertyId) !== -1)
-                        if (!isCurrentShownProperty) {
+                        if (!isCurrentShownProperty && property['bk_property_name'].toLowerCase().indexOf(this.object.filter.toLowerCase()) !== -1) {
                             if (this.isShowExclude) {
                                 hideList.push(property)
                             } else if (this.excludeFields.indexOf(bkPropertyId) === -1) {
@@ -127,7 +129,7 @@
                         }
                     }
                 })
-                return hideList
+                return sortArray(hideList, 'bk_property_name')
             }
         },
         watch: {
@@ -141,16 +143,6 @@
                     this.object.selected = ''
                 }
             },
-            'object.filter' (filter) {
-                filter = filter.toLowerCase()
-                this.hideList.map((property, index) => {
-                    if (property['bk_property_name'].toLowerCase().indexOf(filter) === -1) {
-                        this.$refs.hideItem[index].style.display = 'none'
-                    } else {
-                        this.$refs.hideItem[index].style.display = 'block'
-                    }
-                })
-            },
             'object.selected' (selectedObjId) {
                 let targetFieldOption = this.fieldOptions.find(({bk_obj_id: bkObjId}) => selectedObjId === bkObjId)
                 this.object.list = targetFieldOption ? targetFieldOption['properties'] : []
@@ -158,6 +150,21 @@
             }
         },
         methods: {
+            setSortKey (data) {
+                data.map(item => {
+                    let str = item['bk_property_name']
+                    let sortKey = ''
+                    for (let i = 0; i < str.length; i++) {
+                        let code = str.charCodeAt(i)
+                        if (code < 40869 && code >= 19968) {
+                            sortKey += sortUnicode.strChineseFirstPY.charAt(code - 19968)
+                        } else {
+                            sortKey += str[i]
+                        }
+                    }
+                    item.sortKey = sortKey
+                })
+            },
             addItem (property) {
                 this.shownList.push(property)
             },
@@ -174,7 +181,6 @@
             },
             apply () {
                 this.$emit('apply', this.shownList.slice(0))
-                this.cancel()
             },
             cancel () {
                 this.$emit('cancel')
@@ -289,6 +295,11 @@
                 font-size: 14px;
                 padding-left: 27px;
                 cursor: pointer;
+                span{
+                    display: inline-block;
+                    width: 230px;
+                    @include ellipsis;
+                }
                 &:hover{
                     background: #f9f9f9;
                 }
@@ -327,6 +338,12 @@
             line-height: 42px;
             padding-left: 30px;
             cursor: move;
+            span{
+                display: inline-block;
+                width: calc(100% - 66px);
+                @include ellipsis;
+                vertical-align: bottom;
+            }
             &:hover{
                 background: #f9f9f9;
             }

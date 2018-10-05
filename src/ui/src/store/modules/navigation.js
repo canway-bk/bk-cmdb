@@ -1,7 +1,9 @@
 import {$axios, $Axios, $alertMsg} from '@/api/axios'
 import STATIC_NAVIGATION from '@/common/json/static_navigation.json'
 const state = {
-    fold: false,
+    fold: window.localStorage.getItem('navStick') === 'false',
+    navStick: window.localStorage.getItem('navStick') !== 'false',
+    historyCount: 0,
     classifications: [],
     invisibleClassifications: ['bk_host_manage', 'bk_biz_topo'],
     notCustomClassifications: ['bk_index', 'bk_host_manage', 'bk_back_config'],
@@ -24,6 +26,8 @@ const state = {
 
 const getters = {
     fold: state => state.fold,
+    navStick: state => state.navStick,
+    historyCount: state => state.historyCount,
     classifications: state => state.classifications,
     result: state => state.result,
     authority: state => state.authority,
@@ -79,6 +83,7 @@ const getters = {
                         'path': `/organization/${model['bk_obj_id']}`,
                         'id': model['bk_obj_id'],
                         'name': model['bk_obj_name'],
+                        'icon': model['bk_obj_icon'],
                         'classificationId': model['bk_classification_id']
                     }
                 })
@@ -97,7 +102,7 @@ const getters = {
                         if (state.interceptStaticModel[classificationId].includes(id)) {
                             return sysConfig[classificationId].includes(id)
                         }
-                        return id !== 'permission' // 权限管理仅管理员拥有切后台接口不返回其配置
+                        return !['permission', 'model'].includes(id) // 权限管理、模型管理仅管理员拥有且后台接口不返回其配置
                     })
                 }
             }
@@ -139,29 +144,15 @@ const actions = {
             return Promise.resolve({result: true, data: state.classifications})
         }
         let classifications = []
-        await $axios.post('object/classifications', {}).then(res => {
+        await $axios.post(`object/classification/${rootState.common.bkSupplierAccount}/objects`, {
+        }).then(res => {
             if (res.result) {
                 classifications = res.data
+                commit('setClassifications', classifications)
             } else {
                 $alertMsg(res['bk_error_msg'])
             }
         })
-        await $Axios.all(classifications.map(classification => {
-            return $axios.post(`object/classification/${rootState.common.bkSupplierAccount}/objects`, {
-                'bk_classification_id': classification['bk_classification_id']
-            }).then(res => {
-                if (!res.result) {
-                    $alertMsg(res['bk_error_msg'])
-                }
-                return res.data || []
-            })
-        })).then($Axios.spread(function () {
-            let results = [...arguments]
-            classifications = results.map(classification => {
-                return {...classification[0]}
-            })
-            commit('setClassifications', classifications)
-        }))
         return Promise.resolve({result: state.result.classification, data: state.classifications})
     },
     getAuthority ({commit, state, rootState}) {
@@ -181,8 +172,16 @@ const actions = {
 }
 
 const mutations = {
-    setFold (state, fold) {
+    updateNavFold (state, fold) {
         state.fold = fold
+    },
+    updateNavStick (state, stick) {
+        state.navStick = !!stick
+        window.localStorage.setItem('navStick', !!stick)
+    },
+    updateHistoryCount (state, step = 1) {
+        const count = state.historyCount + step
+        state.historyCount = count > 0 ? count : 0
     },
     setClassifications (state, classifications) {
         state.result.classification = true

@@ -14,7 +14,9 @@
             ref="hosts"
             :isShowBiz="false" 
             :isShowCollect="false" 
-            :isShowHistory="false" 
+            :isShowHistory="false"
+            :isShowTransfer="false"
+            :isShowScope="true"
             :outerParams="hosts.searchParams"
             @choose="setSelectedHost" 
             @attrLoaded="search">
@@ -30,24 +32,29 @@
                         :label="bkBiz['bk_biz_name']">
                     </bk-select-option>
                 </bk-select>
-                <form ref="exportForm" :action="exportUrl" method="POST" class="fl mr10">
-                    <input type="hidden" name="bk_host_id" :value="hosts.selectedHost">
-                    <input type="hidden" name="bk_biz_id" value="-1">
-                    <button class="bk-button"
-                        :disabled="!hasSelectedHost"
-                        @click.prevent="exportChoose">
-                        <i class="icon-cc-derivation"></i>
-                        <span>{{$t('HostResourcePool[\'导出选中\']')}}</span>
-                    </button>
-                </form>
-                <button class="bk-button icon-btn del-button fl mr10" :class="{'disabled': !hasSelectedHost}" :disabled="!hasSelectedHost" v-tooltip="$t('Common[\'删除\']')" @click="confirmDel">
-                    <i class="icon-cc-del"></i>
-                </button>
+                <div class="fl bk-group bk-button-group">
+                    <div class="btn-tooltip-wrapper" v-tooltip="$t('HostResourcePool[\'导出选中\']')">
+                        <form ref="exportForm" :action="exportUrl" method="POST" class="fl">
+                            <input type="hidden" name="bk_host_id" :value="hosts.selectedHost">
+                            <input type="hidden" name="bk_biz_id" value="-1">
+                            <bk-button type="default" class="first"
+                                :disabled="!hasSelectedHost"
+                                @click.prevent="exportChoose">
+                                <i class="icon-cc-derivation"></i>
+                            </bk-button>
+                        </form>
+                    </div>
+                    <div class="btn-tooltip-wrapper" v-tooltip="$t('Common[\'删除\']')">
+                        <bk-button type="default" class="delete-button fl" :class="{'disabled': !hasSelectedHost || $loading('deleteHosts')}" :disabled="!hasSelectedHost || $loading('deleteHosts')" @click="confirmDel">
+                            <i class="icon-cc-del"></i>
+                        </bk-button>
+                    </div>
+                </div>
                 <div class="fr">
                     <bk-button type="primary" class="fl" @click="importHostShow">{{$t('HostResourcePool[\'导入主机\']')}}</bk-button>
-                    <button class="bk-button icon-btn icon-history fl ml10" @click="showFiling" v-tooltip="$t('Common[\'查看删除历史\']')">
+                    <bk-button class="icon-btn icon-history fl ml10" @click="showFiling" v-tooltip="$t('Common[\'查看删除历史\']')">
                         <i class="icon-cc-history"></i>
-                    </button>
+                    </bk-button>
                 </div>
             </div>
         </v-hosts>
@@ -69,7 +76,7 @@
                         <p>{{$t("HostResourcePool['agent安装说明']")}}</p>
                         <div class="back-contain">
                             <i class="icon-cc-skip"></i>
-                            <a href="javascript:void(0)" @click="openAgentApp">{{$t("HostResourcePool['点此进入Agent安装APP']")}}</a>
+                            <a href="javascript:void(0)" @click="openAgentApp">{{$t("HostResourcePool['点此进入节点管理']")}}</a>
                         </div>
                     </div>
                 </bk-tabpanel>
@@ -102,28 +109,7 @@
                     bkBizId: '',
                     selectedHost: [],
                     searchParams: {
-                        'bk_biz_id': -1,
-                        condition: [{
-                            'bk_obj_id': 'biz',
-                            fields: [],
-                            condition: [{
-                                field: 'default',
-                                operator: '$eq',
-                                value: 1
-                            }]
-                        }, {
-                            'bk_obj_id': 'host',
-                            fields: [],
-                            condition: []
-                        }, {
-                            'bk_obj_id': 'module',
-                            fields: [],
-                            condition: []
-                        }, {
-                            'bk_obj_id': 'set',
-                            fields: [],
-                            condition: []
-                        }]
+                        'bk_biz_id': -1
                     },
                     table: {
                         header: [],
@@ -144,7 +130,8 @@
                         importUrl: `${window.siteUrl}hosts/import`
                     }
                 },
-                isShowimportHost: false
+                isShowimportHost: false,
+                prevHistoryCount: 0
             }
         },
         computed: {
@@ -165,6 +152,9 @@
                 if (!isShow) {
                     this.slider.tab.active = 'import'
                 }
+            },
+            'filing.isShow' (isShow) {
+                this.updateHistoryCount(isShow)
             }
         },
         methods: {
@@ -172,7 +162,17 @@
             tabChanged (active) {
                 this.slider.tab.active = active
             },
+            hasAssignedHosts () {
+                return this.$refs.hosts.selectedList.find(host => !!host['biz'].find(biz => biz['default'] !== 1))
+            },
             confirmTransfer (selected, index) {
+                if (this.hasAssignedHosts()) {
+                    this.$alertMsg(this.$t('Hosts["请勿选择已分配主机"]'))
+                    this.$nextTick(() => {
+                        this.hosts.bkBizId = ''
+                    })
+                    return
+                }
                 let h = this.$createElement
                 let content = ''
                 if (this.language === 'en') {
@@ -212,6 +212,9 @@
                     content,
                     confirmFn: () => {
                         this.transferHost()
+                    },
+                    cancelFn: () => {
+                        this.hosts.bkBizId = ''
                     }
                 })
             },
@@ -239,7 +242,8 @@
                             data: JSON.stringify({
                                 'bk_host_id': this.hosts.selectedHost.join(','),
                                 'bk_supplier_account': this.bkSupplierAccount
-                            })
+                            }),
+                            id: 'deleteHosts'
                         }).then(res => {
                             if (res.result) {
                                 this.$bkInfo({
@@ -275,7 +279,7 @@
                 let agentAppUrl = window.agentAppUrl
                 if (agentAppUrl) {
                     if (window.agentAppUrl.indexOf('paasee-g.o.qcloud.com') !== -1) {
-                        window.top.postMessage(JSON.stringify({action: 'open_other_app', app_code: 'bk_agent_setup'}), '*')
+                        window.top.postMessage(JSON.stringify({action: 'open_other_app', app_code: 'bk_nodeman'}), '*')
                     } else {
                         window.open(agentAppUrl)
                     }
@@ -287,12 +291,22 @@
                 this.hosts.table.header = this.$refs.hosts.table.tableHeader
                 this.hosts.table.allAttr = this.$refs.hosts.attribute
                 this.filing.isShow = true
+            },
+            updateHistoryCount (isShow) {
+                if (this.prevHistoryCount) {
+                    this.$store.commit('navigation/updateHistoryCount', isShow ? -1 : 1)
+                }
             }
         },
         created () {
+            this.prevHistoryCount = this.$store.state.navigation.historyCount
             if (!this.bkBizList.length) {
                 this.getBkBizList()
             }
+        },
+        beforeRouteLeave (to, from, next) {
+            this.$store.commit('resetHostSearch')
+            next()
         },
         components: {
             vImport,
@@ -308,7 +322,7 @@
         height: 100%;
         .button-contain{
             display: inline-block;
-            width: calc(100% - 110px);
+            width: calc(100% - 195px);
             vertical-align: middle;
         }
     }
@@ -318,6 +332,8 @@
         width: 200px;
     }
     .icon-cc-history{
+        position: relative;
+        top: -1px;
         font-size: 16px;
     }
     .icon-btn{

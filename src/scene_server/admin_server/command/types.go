@@ -1,18 +1,31 @@
+/*
+ * Tencent is pleased to support the open source community by making 蓝鲸 available.
+ * Copyright (C) 2017-2018 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the MIT License (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ * http://opensource.org/licenses/MIT
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package command
 
 import (
-	"configcenter/src/common"
 	"fmt"
 	"strings"
 
+	"configcenter/src/common"
 	"configcenter/src/common/blog"
-	"configcenter/src/source_controller/common/instdata"
 )
 
 type option struct {
 	OwnerID  string
 	position string
 	dryrun   bool
+	mini     bool
+	scope    string
 }
 
 // Node topo node define
@@ -32,7 +45,7 @@ func (n *Node) getChildObjID() string {
 }
 
 func (n *Node) getInstID() (int64, error) {
-	id, err := getInt64(n.Data[instdata.GetIDNameByType(n.ObjID)])
+	id, err := getInt64(n.Data[common.GetInstIDField(n.ObjID)])
 	if nil != err {
 		return 0, fmt.Errorf("node has no instID: %+v", *n)
 	}
@@ -109,9 +122,9 @@ func (n *Node) getNodekey(parentKey string, keys []string) (nodekey string) {
 
 // Topo define
 type Topo struct {
-	Mainline  []string       `json:"mainline"`
-	BizTopo   *Node          `json:"biz_topo"`
-	ProcTopos []*ProcessTopo `json:"proc_topo"`
+	Mainline  []string     `json:"mainline,omitempty"`
+	BizTopo   *Node        `json:"biz_topo,omitempty"`
+	ProcTopos *ProcessTopo `json:"proc_topo,omitempty"`
 }
 
 type ProModule struct {
@@ -120,9 +133,13 @@ type ProModule struct {
 	BizID      int64  `json:"bk_biz_id" bson:"bk_biz_id,omitempty"`
 }
 
-type ProcessTopo struct {
+type Process struct {
 	Data    map[string]interface{} `json:"data"`
 	Modules []string               `json:"modules"`
+}
+type ProcessTopo struct {
+	BizName string     `json:"bk_biz_name"`
+	Procs   []*Process `json:"procs"`
 }
 
 const actionCreate = "create"

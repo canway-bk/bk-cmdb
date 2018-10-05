@@ -14,25 +14,40 @@ import {$Axios, $axios} from '@/api/axios'
 
 let alertMsg = Vue.prototype.$alertMsg
 
+function getSelectedBizId () {
+    const selectedInCookie = Cookies.get('bk_biz_id')
+    const priviBiz = (Cookies.get('bk_privi_biz_id') || '-1').split('-')
+    if (priviBiz.includes(selectedInCookie)) {
+        return parseInt(selectedInCookie)
+    }
+    return -1
+}
+
 const state = {
     bkSupplierAccount: '0',
     timezoneList: [],   // 时区列表
     biz: {     // 业务列表
         list: [],
-        selected: parseInt(Cookies.get('bk_biz_id')) || -1
+        selected: getSelectedBizId()
     },
     memberList: [],
     isAdmin: window.isAdmin === '1',
     usercustom: {},          // 用户字段配置
     globalLoading: false,
     memberLoading: false,
-    language: Cookies.get('blueking_language') || 'zh_CN'
+    language: Cookies.get('blueking_language') || 'zh_CN',
+    axiosQueue: []
 }
 
 const getters = {
     bkSupplierAccount: state => state.bkSupplierAccount,
     bkBizId: state => state.biz.selected,
     bkBizList: state => state.biz.list,
+    bkPrivBizList: state => {
+        if (state.isAdmin) return state.biz.list
+        const priviBiz = (Cookies.get('bk_privi_biz_id') || '-1').split('-')
+        return state.biz.list.filter(({ bk_biz_id: bkBizId }) => priviBiz.includes(bkBizId.toString()))
+    },
     memberList: state => state.memberList,
     isAdmin: state => state.isAdmin,
     navigation: state => state.navigation,
@@ -40,42 +55,28 @@ const getters = {
     usercustom: state => state.usercustom,
     globalLoading: state => state.globalLoading,
     memberLoading: state => state.memberLoading,
-    language: state => state.language
+    language: state => state.language,
+    axiosQueue: state => state.axiosQueue
 }
 
 const actions = {
     getBkBizList ({commit, state}) {
-        $axios.post(`biz/search/${state.bkSupplierAccount}`, {fields: ['bk_biz_id', 'bk_biz_name'], condition: {bk_data_status: {'$ne': 'disabled'}}}).then((res) => {
+        return $axios.post(`biz/search/${state.bkSupplierAccount}`, {fields: ['bk_biz_id', 'bk_biz_name'], condition: {bk_data_status: {'$ne': 'disabled'}}}).then((res) => {
             if (res.result) {
                 if (res.data.info && res.data.info.length) {
                     commit('setBkBizList', res.data.info)
-                    if (state.biz.selected === -1) { // 如果未选择过，则选中第一个业务
-                        commit('setBkBizId', state['biz']['list'][0]['bk_biz_id'])
-                    } else { // 如果已经选择过，则需判断缓存的已选择业务是否被删除
-                        let isExist = false
-                        state.biz.list.map((biz) => {
-                            if (state.biz.selected === biz['bk_biz_id']) {
-                                isExist = true
-                            }
-                        })
-                        if (!isExist) {
-                            commit('setBkBizId', state.biz.list[0]['bk_biz_id'])
-                        }
-                    }
                 } else {
                     commit('setBkBizList', [])
-                    commit('setBkBizId', -1)
                 }
             } else {
                 alertMsg(res['bk_error_msg'])
             }
+            return res
         })
     },
     getMemberList ({commit, state}, type) {
         state.memberLoading = true
-        let baseURL = $axios.defaults.baseURL
-        $axios.defaults.baseURL = window.siteUrl
-        $axios.get(`/user/list?_t=${(new Date()).getTime()}`, { type }).then((res) => {
+        $axios.get(`${window.siteUrl}user/list?_t=${(new Date()).getTime()}`, { type }).then((res) => {
             if (res.result) {
                 commit('setMemberList', res.data)
             } else {
@@ -85,7 +86,6 @@ const actions = {
         }).catch(() => {
             state.memberLoading = false
         })
-        $axios.defaults.baseURL = baseURL
     }
 }
 
@@ -130,6 +130,9 @@ const mutations = {
     },
     setGlobalLoading (state, isLoading) {
         state.globalLoading = isLoading
+    },
+    updateAxiosQueue (state, axiosQueue) {
+        state.axiosQueue = axiosQueue
     }
 }
 

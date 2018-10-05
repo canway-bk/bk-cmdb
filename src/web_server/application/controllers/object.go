@@ -13,23 +13,25 @@
 package controllers
 
 import (
-	"configcenter/src/common"
-	"configcenter/src/common/blog"
-	"configcenter/src/common/core/cc/api"
-	"configcenter/src/common/core/cc/wactions"
-	"configcenter/src/common/types"
-	"configcenter/src/web_server/application/logics"
-	webCommon "configcenter/src/web_server/common"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"os"
-	//"reflect"
-	lang "configcenter/src/common/language"
-	"encoding/json"
+	"strings"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/rentiansheng/xlsx"
-	"time"
+
+	"configcenter/src/common"
+	"configcenter/src/common/blog"
+	"configcenter/src/common/core/cc/api"
+	"configcenter/src/common/core/cc/wactions"
+	lang "configcenter/src/common/language"
+	"configcenter/src/common/types"
+	"configcenter/src/web_server/application/logics"
+	webCommon "configcenter/src/web_server/common"
 )
 
 func init() {
@@ -92,7 +94,7 @@ func ImportObject(c *gin.Context) {
 
 	apiSite, _ := cc.AddrSrv.GetServer(types.CC_MODULE_APISERVER)
 
-	attrItems, err := logics.GetImportInsts(f, objID, apiSite, c.Request.Header, 3,false, defLang)
+	attrItems, errMsg, err := logics.GetImportInsts(f, objID, apiSite, c.Request.Header, 3, false, defLang)
 	if 0 == len(attrItems) {
 		msg := ""
 		if nil != err {
@@ -100,6 +102,11 @@ func ImportObject(c *gin.Context) {
 		} else {
 			msg = getReturnStr(common.CCErrWebFileContentFail, defErr.Errorf(common.CCErrWebFileContentFail, "").Error(), nil)
 		}
+		c.String(http.StatusOK, string(msg))
+		return
+	}
+	if 0 != len(errMsg) {
+		msg := getReturnStr(common.CCErrWebFileContentFail, defErr.Errorf(common.CCErrWebFileContentFail, strings.Join(errMsg, ",")).Error(), common.KvMap{"err": errMsg})
 		c.String(http.StatusOK, string(msg))
 		return
 	}

@@ -22,24 +22,24 @@
                 </div>
                 <ul class="list-wrapper">
                     <li v-for="(item, index) in shownList" 
-                        @click="addItem(index)"
+                        @click="addItem(item, index)"
                         :key="index">
-                        {{item['bk_property_name']}}
+                        <span :title="item['bk_property_name']">{{item['bk_property_name']}}</span>
                         <i class="bk-icon icon-angle-right"></i>
                     </li>
                 </ul>
             </div>
-            <div class="right-list pr20">
+            <div class="right-list">
                 <div class="title">
                     <div class="search-wrapper">
                         {{$t("Inst['已显示属性']")}}
                     </div>
                 </div>
-                <div :class="['model-content', {'content-left-hidden' : isShow}]" >
+                <div :class="['model-content pr20', {'content-left-hidden' : isShow}]" >
                     <div slot="contentRight">
                         <draggable class="content-right" v-model="localHasSelectionList" :options="{animation: 150}">
                             <div v-for="(item, index) in localHasSelectionList" :key="index" class="item">
-                                <i class="icon-triple-dot"></i><span>{{item['bk_property_name']}}</span><i class="bk-icon icon-eye-slash-shape" @click="removeItem(index)"></i>
+                                <i class="icon-triple-dot"></i><span :title="item['bk_property_name']">{{item['bk_property_name']}}</span><i class="bk-icon icon-eye-slash-shape" @click="removeItem(item, index)" v-tooltip="$t('Common[\'隐藏\']')"></i>
                             </div>
                         </draggable>
                     </div>
@@ -50,8 +50,11 @@
             <bk-button class="btn apply" type="primary" @click="apply">
                 {{$t("Inst['应用']")}}
             </bk-button>
-            <bk-button class="btn reinstate cancel" type="default" @click="cancel">
+            <bk-button class="btn reinstate vice-btn" type="default" @click="cancel">
                 {{$t("Common['取消']")}}
+            </bk-button>
+            <bk-button class="fr vice-btn" type="default" @click="resetConfirm">
+                {{$t("Common['还原默认']")}}
             </bk-button>
         </div>
     </div>
@@ -60,6 +63,7 @@
 <script>
     import draggable from 'vuedraggable'
     import {mapGetters} from 'vuex'
+    import { sortArray } from '@/utils/util'
     export default {
         data () {
             return {
@@ -103,7 +107,7 @@
                         list.push(val)
                     }
                 })
-                return list
+                return sortArray(list, 'bk_property_name')
             }
         },
         watch: {
@@ -116,11 +120,31 @@
             }
         },
         methods: {
-            addItem (index) {
-                this.localHasSelectionList = this.localHasSelectionList.concat(this.localForSelectionList.splice(index, 1))
+            resetConfirm () {
+                this.$bkInfo({
+                    title: this.$t("Common['是否要还原回系统默认显示属性？']"),
+                    confirmFn: () => {
+                        this.resetFields()
+                    }
+                })
             },
-            removeItem (index) {
-                this.localForSelectionList = this.localForSelectionList.concat(this.localHasSelectionList.splice(index, 1))
+            async resetFields () {
+                try {
+                    let params = {}
+                    params[`${this.objId}DisplayColumn`] = []
+                    await this.$axios.post('usercustom', params)
+                    this.$emit('resetFields')
+                } catch (e) {
+                    this.$alertMsg(e.message || e.data['bk_error_msg'] || e.statusText)
+                }
+            },
+            addItem (item, index) {
+                this.localForSelectionList = this.localForSelectionList.filter(property => property['bk_property_id'] !== item['bk_property_id'])
+                this.localHasSelectionList.push(item)
+            },
+            removeItem (item, index) {
+                this.localHasSelectionList = this.localHasSelectionList.filter(property => property['bk_property_id'] !== item['bk_property_id'])
+                this.localForSelectionList.push(item)
             },
             /*
                 更新用户字段
@@ -325,6 +349,11 @@
                     &:hover{
                         background: #f9f9f9;
                     }
+                    span{
+                        display: inline-block;
+                        width: 230px;
+                        @include ellipsis;
+                    }
                     i{
                         float: right;
                         margin-top: 12px;
@@ -446,6 +475,12 @@
                         &:hover{
                             background: #f9f9f9;
                         }
+                        span{
+                            display: inline-block;
+                            width: calc(100% - 46px);
+                            @include ellipsis;
+                            vertical-align: bottom;
+                        }
                         .icon-triple-dot{
                             position: relative;
                             top: -1px;
@@ -482,22 +517,8 @@
                 line-height: 34px;
                 border-radius: 0;
                 margin-right: 10px;
-                border: 0;
+                // border: 0;
                 border-radius: 2px;
-                &.apply{
-                    &:hover{
-                        background: #4d597d;
-                    }
-                }
-                &.cancel{
-                    border: 1px solid #e6e9f2;
-                    &:hover{
-                        color: #6b7baa;
-                        border-color: #6b7baa;
-    
-                    }
-                }
-    
             }
             .info{
                 float: right;

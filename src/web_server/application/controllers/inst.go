@@ -13,6 +13,16 @@
 package controllers
 
 import (
+	"fmt"
+	"math/rand"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/rentiansheng/xlsx"
+
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/core/cc/api"
@@ -20,13 +30,6 @@ import (
 	"configcenter/src/common/types"
 	"configcenter/src/web_server/application/logics"
 	webCommon "configcenter/src/web_server/common"
-	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/rentiansheng/xlsx"
-	"math/rand"
-	"net/http"
-	"os"
-	"time"
 )
 
 func init() {
@@ -74,14 +77,19 @@ func ImportInst(c *gin.Context) {
 
 	apiAddr, err := cc.AddrSrv.GetServer(types.CC_MODULE_APISERVER)
 	url := apiAddr
-	insts, err := logics.GetImportInsts(f, objID, url, c.Request.Header, 0, true, defLang)
-	if 0 == len(insts) {
-		msg := getReturnStr(common.CCErrWebFileContentFail, defErr.Errorf(common.CCErrWebFileContentFail, err.Error()).Error(), nil)
+	insts, errMsg, err := logics.GetImportInsts(f, objID, url, c.Request.Header, 0, true, defLang)
+	if 0 != len(errMsg) {
+		msg := getReturnStr(common.CCErrWebFileContentFail, defErr.Errorf(common.CCErrWebFileContentFail, strings.Join(errMsg, ",")).Error(), common.KvMap{"err": errMsg})
 		c.String(http.StatusOK, string(msg))
 		return
 	}
 	if nil != err {
 		msg := getReturnStr(common.CCErrWebFileContentEmpty, defErr.Errorf(common.CCErrWebOpenFileFail, "").Error(), nil)
+		c.String(http.StatusOK, string(msg))
+		return
+	}
+	if 0 == len(insts) {
+		msg := getReturnStr(common.CCErrWebFileContentFail, defErr.Errorf(common.CCErrWebFileContentFail, "").Error(), nil)
 		c.String(http.StatusOK, string(msg))
 		return
 	}
@@ -91,6 +99,7 @@ func ImportInst(c *gin.Context) {
 		delete(inst_info, common.BKInstIDField)
 	}
 	blog.Debug("insts data from file:%+v", insts)
+
 	// MarkConvertList start(chace)
 
 	propertyMap, err:=logics.GetObjFieldIDs(objID, apiAddr, nil, c.Request.Header)
@@ -100,9 +109,9 @@ func ImportInst(c *gin.Context) {
 		c.String(http.StatusOK, string(msg))
 		return
 	}
-	errCode, errMsg := logics.GetMarkConvertList(insts, propertyMap)
+	errCode, errMsgStr := logics.GetMarkConvertList(insts, propertyMap)
 	if 0 != errCode {
-		msg := getReturnStr(common.CCErrWebMarkDownConvertListFail, defErr.Errorf(errCode, errMsg).Error(), nil)
+		msg := getReturnStr(common.CCErrWebMarkDownConvertListFail, defErr.Errorf(errCode, errMsgStr).Error(), nil)
 		c.String(http.StatusOK, string(msg))
 		return
 	}
@@ -110,7 +119,7 @@ func ImportInst(c *gin.Context) {
 	logics.ImportMovePassword(insts, propertyMap)
 	// MarkConvertList end
 
-	apiSite, _ := cc.AddrSrv.GetServer(types.CC_MODULE_APISERVER)
+	apiSite := cc.APIAddr()
 	url = apiSite + "/api/" + webCommon.API_VERSION + "/inst/" + c.Param("bk_supplier_account") + "/" + objID
 	blog.Debug("batch insert insts, the url is %s", url)
 	params := make(map[string]interface{})
@@ -200,7 +209,12 @@ func ExportInst(c *gin.Context) {
 	err = file.Save(dirFileName)
 	if err != nil {
 		blog.Error("ExportInst save file error:%s", err.Error())
-		fmt.Printf(err.Error())
+		if err != nil {
+			blog.Error("ExportInst save file error:%s", err.Error())
+			reply := getReturnStr(common.CCErrWebCreateEXCELFail, defErr.Errorf(common.CCErrCommExcelTemplateFailed, err.Error()).Error(), nil)
+			c.Writer.Write([]byte(reply))
+			return
+		}
 	}
 	logics.AddDownExcelHttpHeader(c, fmt.Sprintf("inst_%s.xlsx", objID))
 	c.File(dirFileName)
