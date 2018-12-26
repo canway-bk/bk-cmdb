@@ -265,6 +265,7 @@
         "时区": "Timezone",
         "bool": "bool",
         "表格": "Table",
+        "密码": "password",
         "列名称": "Column Name",
         "列描述": "Column Description",
         "最小值": "Min",

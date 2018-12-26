@@ -46,7 +46,7 @@
                         </div>
                         <div class="btn-tooltip-wrapper" v-tooltip="$t('BusinessTopology[\'修改\']')">
                             <bk-button type="default" class="vice-btn"
-                                :disabled="!table.chooseId.length" 
+                                :disabled="!table.chooseId.length"
                                 @click="multipleUpdate">
                                 <i class="icon-cc-edit"></i>
                             </bk-button>
@@ -78,7 +78,7 @@
                             v-for="(option, index) of filterList"
                             :key="option.id"
                             :value="option.id"
-                            :label="option.name">
+                            :label="option.name" v-if="option.type !== 'list' && option.type !== 'password'">
                         </bk-select-option>
                     </bk-select>
                 </div>
@@ -92,7 +92,7 @@
                     </bk-select>
                 </template>
                 <template v-else>
-                    <input v-if="filter.type === 'int'" type="text" maxlength="11" class="bk-form-input search-text int" 
+                    <input v-if="filter.type === 'int'" type="text" maxlength="11" class="bk-form-input search-text int"
                     :placeholder="$t('Common[\'快速查询\']')" v-model.number="filter.value" @keyup.enter="doFilter">
                     <input v-else type="text" class="bk-form-input search-text" :placeholder="$t('Common[\'快速查询\']')" v-model.trim="filter.value" @keyup.enter="doFilter">
                     <i class="bk-icon icon-search" @click="doFilter"></i>
@@ -101,8 +101,8 @@
         </div>
         <div class="table-contain">
             <v-object-table
-                :header="table.header" 
-                :list="table.list" 
+                :header="table.header"
+                :list="table.list"
                 :pagination.sync="table.pagination"
                 :defaultSort="table.defaultSort"
                 :checked.sync="table.chooseId"
@@ -133,9 +133,9 @@
                 <div class="slide-content" slot="content">
                     <bk-tab :active-name="tab.activeName" style="border: none;" @tab-changed="tabChanged">
                         <bk-tabpanel name="attr" :title="$t('Common[\'属性\']')">
-                            <v-object-attr 
+                            <v-object-attr
                                 ref="attribute"
-                                :formFields="attr.formFields" 
+                                :formFields="attr.formFields"
                                 :formValues="attr.formValues"
                                 :showDelete="isShowDelete"
                                 :type="attr.type"
@@ -164,18 +164,18 @@
             </v-sideslider>
         </div>
         <v-sideslider :isShow.sync="importSlider.isShow" :hasQuickClose="true" :title="{icon: 'icon-cc-derivation',text: `${$t('ModelManagement[\'导入\']')} ${objName}`}" @closeSlider="closeImportSlider">
-            <v-import v-if="importSlider.isShow" slot="content" 
-                :templateUrl="templateUrl" 
-                :importUrl="importUrl" 
+            <v-import v-if="importSlider.isShow" slot="content"
+                :templateUrl="templateUrl"
+                :importUrl="importUrl"
                 @success="setTablePage(1)"
                 @partialSuccess="setTablePage(1)"></v-import>
         </v-sideslider>
         <v-sideslider :isShow.sync="settingSlider.isShow" :hasQuickClose="true" :width="600" :title="settingSlider.title">
-            <v-config-field 
+            <v-config-field
                 ref="configField"
                 slot="content"
                 :isShow="settingSlider.isShow"
-                :attrList="attr.formFields"
+                :attrList="attr.formFields.filter(({bk_property_type:bkPropertyType}) => !['list', 'password'].includes(bkPropertyType))"
                 @apply="settingApply"
                 @cancel="settingSlider.isShow = false"
                 @resetFields="resetFields"
@@ -271,7 +271,7 @@
                 'bkSupplierAccount',
                 'usercustom'
             ]),
-            
+
             ...mapGetters('navigation', ['activeClassifications']),
             // 当前路由对应的模型ID
             objId () {
@@ -518,25 +518,29 @@
                                         break
                                     }
                                 }
-                                if (val['bk_property_type'] !== 'singleasst' && val['bk_property_type'] !== 'multiasst') {
-                                    let property = res.data.find(({bk_property_id: bkPropertyId}) => {
-                                        return bkPropertyId === val['bk_property_id']
-                                    })
+                                if (!['list', 'password'].includes(val['bk_property_type'])) {
+                                    if (val['bk_property_type'] !== 'singleasst' && val['bk_property_type'] !== 'multiasst') {
+                                        let property = res.data.find(({bk_property_id: bkPropertyId}) => {
+                                            return bkPropertyId === val['bk_property_id']
+                                        })
+                                    }
                                 }
                             })
                         } else { // 没有时则显示前六
                             res.data.map(attr => {
-                                let headerObj = {
-                                    id: attr['bk_property_id'],
-                                    name: attr['bk_property_name'],
-                                    property: attr
-                                }
-                                if (attr['bk_isonly'] && attr['bk_isrequired']) {
-                                    header.unshift(headerObj)
-                                } else if (attr['bk_isonly'] || attr['bk_isrequired']) {
-                                    header.push(headerObj)
-                                } else {
-                                    headerTail.push(headerObj)
+                                if (!['list', 'password'].includes(attr['bk_property_type'])) {
+                                    let headerObj = {
+                                        id: attr['bk_property_id'],
+                                        name: attr['bk_property_name'],
+                                        property: attr
+                                    }
+                                    if (attr['bk_isonly'] && attr['bk_isrequired']) {
+                                        header.unshift(headerObj)
+                                    } else if (attr['bk_isonly'] || attr['bk_isrequired']) {
+                                        header.push(headerObj)
+                                    } else {
+                                        headerTail.push(headerObj)
+                                    }
                                 }
                             })
                         }
@@ -1088,7 +1092,7 @@
                 width: 115px;
                 .bk-select-input{
                     }
-                
+
                 .bk-form-input{
                     position: relative;
                     &:focus{

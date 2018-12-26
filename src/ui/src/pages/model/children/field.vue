@@ -484,6 +484,46 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <!--chace begin-->
+                                    <!-- 表格 -->
+                                    <div class="mt20 mr20 clearfix" v-if="item['bk_property_type'] === 'list'">
+                                        <ul class="list-wrapper clearfix">
+                                            <li class="list-item">
+                                                <div>{{$t('ModelManagement["列名称"]')}}</div>
+                                                <div>{{$t('ModelManagement["列描述"]')}}</div>
+                                                <div>{{$t('ModelManagement["操作"]')}}</div>
+                                            </li>
+                                            <li class="list-item" v-for="(opt, index) in item.option">
+                                                <i v-show="opt.errorMsg" v-tooltip.left="{content: opt.errorMsg, classes: 'tooltip-danger'}" class="icon icon-cc-attribute"></i>
+                                                <div class="list-row">
+                                                    <span class="list-view" @click="listViewEdit(opt, 'isEditName', true)" v-if="!opt.isEditName">{{opt['list_header_name']}}</span>
+                                                    <input type="text" v-focus @blur="listViewEdit(opt, 'isEditName', false)" v-else v-model="opt['list_header_name']">
+                                                </div>
+                                                <div class="list-row">
+                                                    <span class="list-view" @click="listViewEdit(opt, 'isEditDesc', true)" v-if="!opt.isEditDesc">{{opt['list_header_describe']}}</span>
+                                                    <input type="text" v-focus @blur="listViewEdit(opt, 'isEditDesc', false)" v-else v-model="opt['list_header_describe']">
+                                                </div>
+                                                <div>
+                                                      <span class="add" @click="addTableList(index, item.option)" :title="$t('Common[\'新增\']')">
+                                                          <i class="bk-icon icon-plus-circle-shape"></i>
+                                                      </span>
+                                                    <span class="delete" @click="deleteTableList(index, item.option)" v-if="index" :title="$t('Common[\'删除\']')">
+                                                          <i class="icon-cc-del"></i>
+                                                      </span>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <!-- 密码 -->
+                                    <div class="mt20 clearfix" v-show="item['bk_property_type'] === 'password'">
+                                        <div class="form-common-item mt20">
+                                            <label class="form-common-label">{{$t('Common["正则验证"]')}}</label>
+                                            <div class="form-common-content reg-verification ">
+                                                <input type="text" class="from-input" name="" placeholder="" v-model.trim="newFieldInfo.option">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!--chace end-->
                                     <div class="submit-btn" v-if="!isReadOnly">
                                         <bk-button type="primary" :loading="$loading('saveChange')" class="save-btn main-btn mr10" :class="{'loading': $loading('saveChange')}" @click="saveFieldChange(item, index)">
                                             {{$t('Common["保存"]')}}
@@ -550,7 +590,6 @@
                                         </div>
                                     </div>
                                 </div>
-    
                                 <h3>{{$t('ModelManagement["选项"]')}}</h3>
                                 <div class="clearfix">
                                     <div class="form-common-item mr0">
@@ -629,7 +668,7 @@
                                 </div>
                                 <!-- 枚举 -->
                                 <div class="clearfix form-option" v-if="newFieldInfo.propertyType === 'enum'">
-                                    
+
                                     <!-- <div v-pre class="clearfix"></div> -->
                                     <div class="form-enum-box clearfix" v-if="newFieldInfo.propertyType === 'enum'">
                                         <div class="form-enum-wrapper" v-for="(field, fieldIndex) in newFieldInfo.option.list">
@@ -722,6 +761,44 @@
                                                 </bk-option-group>
                                             </bk-select>
                                             <span class="select-error" v-if="isSelectErrorShow">{{$t('ModelManagement["请选择关联模型"]')}}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- 表格(chace) -->
+                                <div class="mt20 clearfix" v-show="newFieldInfo.propertyType === 'list'">
+                                    <ul class="list-wrapper clearfix">
+                                        <li class="list-item">
+                                            <div>{{$t('ModelManagement["列名称"]')}}</div>
+                                            <div>{{$t('ModelManagement["列描述"]')}}</div>
+                                            <div>{{$t('ModelManagement["操作"]')}}</div>
+                                        </li>
+                                        <li class="list-item" v-for="(opt, index) in newFieldInfo.option">
+                                            <i v-show="opt.errorMsg" v-tooltip.left="{content: opt.errorMsg, classes: 'tooltip-danger'}" class="icon icon-cc-attribute"></i>
+                                            <div class="list-row">
+                                                <span class="list-view" @click="opt.isEditName = true" v-if="!opt.isEditName">{{opt['list_header_name']}}</span>
+                                                <input type="text" v-focus @blur="opt.isEditName = false" v-else v-model="opt['list_header_name']">
+                                            </div>
+                                            <div class="list-row">
+                                                <span class="list-view" @click="opt.isEditDesc = true" v-if="!opt.isEditDesc">{{opt['list_header_describe']}}</span>
+                                                <input type="text" v-focus @blur="opt.isEditDesc = false" v-else v-model="opt['list_header_describe']">
+                                            </div>
+                                            <div>
+                                                  <span class="add" @click="addTableList(index)" :title="$t('Common[\'新增\']')">
+                                                      <i class="bk-icon icon-plus-circle-shape"></i>
+                                                  </span>
+                                                <span class="delete" @click="deleteTableList(index)" v-if="index" :title="$t('Common[\'删除\']')">
+                                                      <i class="icon-cc-del"></i>
+                                                  </span>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <!-- 密码(chace) -->
+                                <div class="mt20 clearfix" v-show="newFieldInfo.propertyType === 'password'">
+                                    <div class="form-common-item mt20">
+                                        <label class="form-common-label">{{$t('Common["正则验证"]')}}</label>
+                                        <div class="form-common-content reg-verification ">
+                                            <input type="text" class="from-input" name="" placeholder="" v-model.trim="newFieldInfo.option">
                                         </div>
                                     </div>
                                 </div>
@@ -860,6 +937,62 @@
                     }
                 },
                 isLoading: false,           // 是否处于加载列表状态
+                fieldTypeList: [
+                    {
+                        value: 'singlechar',
+                        label: this.$t('ModelManagement["短字符"]')
+                    },
+                    {
+                        value: 'int',
+                        label: this.$t('ModelManagement["数字"]')
+                    },
+                    {
+                        value: 'enum',
+                        label: this.$t('ModelManagement["枚举"]')
+                    },
+                    {
+                        value: 'date',
+                        label: this.$t('ModelManagement["日期"]')
+                    },
+                    {
+                        value: 'time',
+                        label: this.$t('ModelManagement["时间"]')
+                    },
+                    {
+                        value: 'longchar',
+                        label: this.$t('ModelManagement["长字符"]')
+                    },
+                    {
+                        value: 'singleasst',
+                        label: this.$t('ModelManagement["单关联"]')
+                    },
+                    {
+                        value: 'multiasst',
+                        label: this.$t('ModelManagement["多关联"]')
+                    },
+                    {
+                        value: 'objuser',
+                        label: this.$t('ModelManagement["用户"]')
+                    },
+                    {
+                        value: 'timezone',
+                        label: this.$t('ModelManagement["时区"]')
+                    },
+                    {
+                        value: 'bool',
+                        label: 'bool'
+                    },
+                    // chace bengin
+                    {
+                        value: 'list',
+                        label: this.$t('ModelManagement["表格"]')
+                    },
+                    {
+                        value: 'password',
+                        label: this.$t('ModelManagement["密码"]')
+                    }
+                    // chace end
+                ],
                 fieldList: [],          // 字段配置列表
                 defaultModel: '',
                 curFieldInfo: {         // 当前改动项
@@ -913,58 +1046,58 @@
                 'bkSupplierAccount',
                 'language'
             ]),
-            fieldTypeList () {
-                let list = [
-                    {
-                        value: 'singlechar',
-                        label: this.$t('ModelManagement["短字符"]')
-                    },
-                    {
-                        value: 'int',
-                        label: this.$t('ModelManagement["数字"]')
-                    },
-                    {
-                        value: 'enum',
-                        label: this.$t('ModelManagement["枚举"]')
-                    },
-                    {
-                        value: 'date',
-                        label: this.$t('ModelManagement["日期"]')
-                    },
-                    {
-                        value: 'time',
-                        label: this.$t('ModelManagement["时间"]')
-                    },
-                    {
-                        value: 'longchar',
-                        label: this.$t('ModelManagement["长字符"]')
-                    },
-                    {
-                        value: 'singleasst',
-                        label: this.$t('ModelManagement["单关联"]')
-                    },
-                    {
-                        value: 'multiasst',
-                        label: this.$t('ModelManagement["多关联"]')
-                    },
-                    {
-                        value: 'objuser',
-                        label: this.$t('ModelManagement["用户"]')
-                    },
-                    {
-                        value: 'timezone',
-                        label: this.$t('ModelManagement["时区"]')
-                    },
-                    {
-                        value: 'bool',
-                        label: 'bool'
-                    }
-                ]
-                if (this.isMainLine) {
-                    list.splice(6, 2)
-                }
-                return list
-            },
+            // fieldTypeList () {
+            //     let list = [
+            //         {
+            //             value: 'singlechar',
+            //             label: this.$t('ModelManagement["短字符"]')
+            //         },
+            //         {
+            //             value: 'int',
+            //             label: this.$t('ModelManagement["数字"]')
+            //         },
+            //         {
+            //             value: 'enum',
+            //             label: this.$t('ModelManagement["枚举"]')
+            //         },
+            //         {
+            //             value: 'date',
+            //             label: this.$t('ModelManagement["日期"]')
+            //         },
+            //         {
+            //             value: 'time',
+            //             label: this.$t('ModelManagement["时间"]')
+            //         },
+            //         {
+            //             value: 'longchar',
+            //             label: this.$t('ModelManagement["长字符"]')
+            //         },
+            //         {
+            //             value: 'singleasst',
+            //             label: this.$t('ModelManagement["单关联"]')
+            //         },
+            //         {
+            //             value: 'multiasst',
+            //             label: this.$t('ModelManagement["多关联"]')
+            //         },
+            //         {
+            //             value: 'objuser',
+            //             label: this.$t('ModelManagement["用户"]')
+            //         },
+            //         {
+            //             value: 'timezone',
+            //             label: this.$t('ModelManagement["时区"]')
+            //         },
+            //         {
+            //             value: 'bool',
+            //             label: 'bool'
+            //         }
+            //     ]
+            //     if (this.isMainLine) {
+            //         list.splice(6, 2)
+            //     }
+            //     return list
+            // },
             exportUrl () {
                 return `${window.siteUrl}object/owner/${this.bkSupplierAccount}/object/${this.objId}/export`
             },
@@ -1135,6 +1268,18 @@
                         })
                         opt = option.list
                         break
+                    // chace begin
+                    case 'list':
+                        opt = []
+                        option.map(item => {
+                            opt.push({
+                                list_header_name: item['list_header_name'],
+                                list_header_describe: item['list_header_describe']
+                            })
+                        })
+                        break
+                    // chace end
+                    case 'password':
                     case 'longchar':
                     case 'singlechar':
                     case 'singleasst':
@@ -1175,6 +1320,18 @@
                             }
                         }
                         break
+                    // chace begin
+                    case 'list':
+                        if (item['Option'] !== 'undefined') {
+                            let opt = this.$deepClone(item['Option'])
+                            opt.map(item => {
+                                item['isEditName'] = false
+                                item['isEditDesc'] = false
+                            })
+                            option = opt
+                        }
+                        break
+                    case 'password':
                     case 'longchar':
                     case 'singlechar':
                         option = item['Option']
@@ -1326,7 +1483,7 @@
                                 reg: ''
                             },
                             enum: {
-    
+
                             },
                             singleasst: {
                                 type: ''
@@ -1469,6 +1626,15 @@
                         this.closeAddFieldBox()
                         this.$emit('newField') // 更新字段分栏列表
                     } else {
+                        // chace
+                        if (this.newFieldInfo.propertyType === 'list') {
+                            this.newFieldInfo.option.map(opt => {
+                                opt.errorMsg = ''
+                            })
+                            for (let key in res.data) {
+                                this.$set(this.newFieldInfo.option[key], 'errorMsg', res.data[key])
+                            }
+                        }
                         this.$alertMsg(res['bk_error_msg'])
                     }
                 })
@@ -1503,6 +1669,18 @@
                             list: [{id: '', name: ''}],
                             defaultIndex: 0
                         }
+                        break
+                    // chace
+                    case 'list':
+                        this.newFieldInfo.option = [{
+                            list_header_name: 'default',
+                            list_header_describe: '默认列',
+                            isEditName: false,
+                            isEditDesc: false
+                        }]
+                        break
+                    case 'password':
+                        this.newFieldInfo.option = ''
                         break
                     case 'singleasst':
                     case 'multiasst':
@@ -1551,6 +1729,14 @@
                         this.getModelField()
                         this.curFieldInfoCopy = this.$deepClone(this.curFieldInfo)
                     } else {
+                        if (item['bk_property_type'] === 'list') {
+                            item.option.map(opt => {
+                                opt.errorMsg = ''
+                            })
+                            for (let key in res.data) {
+                                this.$set(item.option[key], 'errorMsg', res.data[key])
+                            }
+                        }
                         this.$alertMsg(res['bk_error_msg'])
                     }
                 })

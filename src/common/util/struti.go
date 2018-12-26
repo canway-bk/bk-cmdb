@@ -26,11 +26,13 @@ const (
 	dateTimePattern    = `^[0-9]{4}[\-]{1}[0-9]{2}[\-]{1}[0-9]{2}[\s]{1}[0-9]{2}[\:]{1}[0-9]{2}[\:]{1}[0-9]{2}$`
 	//timeZonePattern    = `^[a-zA-Z]+/[a-z\-\_+\-A-Z]+$`
 	timeZonePattern = `^[a-zA-Z0-9\-−_\/\+]+$`
+	fieldPattern = `^[a-zA-Z0-9_]+$`
 )
 
 var (
 	chinaMobileRegexp = regexp.MustCompile(chinaMobilePattern)
 	charRegexp        = regexp.MustCompile(charPattern)
+	fieldRegexp		  = regexp.MustCompile(fieldPattern)
 	numCharRegexp     = regexp.MustCompile(numCharPattern)
 	mailRegexp        = regexp.MustCompile(mailPattern)
 	dateRegexp        = regexp.MustCompile(datePattern)
@@ -49,6 +51,11 @@ func CheckLen(sInput string, min, max int) bool {
 //是否大、小写字母组合
 func IsChar(sInput string) bool {
 	return charRegexp.MatchString(sInput)
+}
+
+//是否大小写字母或者_组合
+func IsField(sInput string) bool {
+	return fieldRegexp.MatchString(sInput)
 }
 
 //是否字母、数字组合

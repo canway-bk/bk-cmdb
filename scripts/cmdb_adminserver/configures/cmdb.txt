@@ -1,0 +1,28 @@
+go run object.go --addrport=127.0.0.1:50001 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\objectcontroller.conf
+
+go run host.go --addrport=127.0.0.1:50002 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\hostcontroller.conf
+
+go run process.go --addrport=127.0.0.1:50003 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\proccontroller.conf
+
+go run audit.go --addrport=127.0.0.1:50005 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\auditcontroller.conf
+
+go run datacollection.go --addrport=127.0.0.1:50006 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\datacollection.conf
+
+go run topo.go --addrport=127.0.0.1:60001 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\topo.conf
+
+go run host.go --addrport=127.0.0.1:60002 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\host.conf
+
+go run process.go --addrport=127.0.0.1:60003 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\proc.conf
+
+go run event.go --addrport=127.0.0.1:60009 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\eventserver.conf
+
+go run migrate.go imports.go --addrport=127.0.0.1:60005 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\migrate.conf
+
+go run api_server.go --addrport=127.0.0.1:8080 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\apiserver.conf
+
+go run ui.go --addrport=127.0.0.1:80 --regdiscv=127.0.0.1:2181 --config=E:\go\src\configcenter\scripts\cmdb_adminserver\configures\webserver.conf\
+
+auth cc
+config set stop-writes-on-bgsave-error no
+
+刷新错误信息需要执行初始化数据

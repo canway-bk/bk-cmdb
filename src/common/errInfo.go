@@ -278,7 +278,11 @@ const (
 
 	CCErrTopoMulueIDNotfoundFailed = 1101080
 	CCErrTopoBkAppNotAllowedDelete = 1101081
-
+	CCErrTopoObjectAttrCreateTypeListNameCheck = 1101082
+	CCErrTopoObjectAttrCreateTypeListNameRepeat = 1101083
+	CCErrTopoObjectAttrCreateTypeListNameField = 1101084
+	CCErrTopoObjectAttrCreateTypeListNameLen = 1101085
+	CCErrTopoObjectAttrCreateTypeListNameEmpty = 1101086
 	// objectcontroller 1102XXX
 
 	// CCErrObjectPropertyGroupInsertFailed failed to save the property group
@@ -433,7 +437,7 @@ const (
 	CCErrWebGetHostFail      = 1111006
 	CCErrWebCreateEXCELFail  = 1111007
 	CCErrWebGetObjectFail    = 1111008
-
+	CCErrWebMarkDownConvertListFail = 1111009
 	CC_Err_Comm_HOST_CREATE_FAIL          = 4300
 	CC_Err_Comm_HOST_CREATE_FAIL_STR      = "create host fail"
 	CC_Err_Comm_HOST_MODIFY_FAIL          = 4301

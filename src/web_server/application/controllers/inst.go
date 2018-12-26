@@ -94,13 +94,38 @@ func ImportInst(c *gin.Context) {
 		return
 	}
 
+	// todo 暂时修复导入bug（chace）
+	for _, inst_info := range insts{
+		delete(inst_info, common.BKInstIDField)
+	}
 	blog.Debug("insts data from file:%+v", insts)
+
+	// MarkConvertList start(chace)
+
+	propertyMap, err:=logics.GetObjFieldIDs(objID, apiAddr, nil, c.Request.Header)
+	if nil != err {
+		blog.Error("GetObjFieldIDs err:%v",err)
+		msg := getReturnStr(common.CCErrWebGetObjectFail, defErr.Errorf(common.CCErrWebGetObjectFail, err.Error()).Error(), nil)
+		c.String(http.StatusOK, string(msg))
+		return
+	}
+	errCode, errMsgStr := logics.GetMarkConvertList(insts, propertyMap)
+	if 0 != errCode {
+		msg := getReturnStr(common.CCErrWebMarkDownConvertListFail, defErr.Errorf(errCode, errMsgStr).Error(), nil)
+		c.String(http.StatusOK, string(msg))
+		return
+	}
+	// 去除密码类型字段
+	logics.ImportMovePassword(insts, propertyMap)
+	// MarkConvertList end
+
 	apiSite := cc.APIAddr()
 	url = apiSite + "/api/" + webCommon.API_VERSION + "/inst/" + c.Param("bk_supplier_account") + "/" + objID
 	blog.Debug("batch insert insts, the url is %s", url)
 	params := make(map[string]interface{})
 	params["input_type"] = common.InputTypeExcel
 	params["BatchInfo"] = insts
+	blog.Debug("params:%v",params)
 	reply, err := httpRequest(url, params, c.Request.Header)
 	blog.Debug("return the result:", reply)
 	if nil != err {
@@ -134,7 +159,23 @@ func ExportInst(c *gin.Context) {
 		c.String(http.StatusBadGateway, msg, nil)
 		return
 	}
-
+	// list convert markdown start
+	propertyMap, err:=logics.GetObjFieldIDs(objID, apiSite, nil, c.Request.Header)
+	if err != nil {
+		blog.Error(err.Error())
+		msg := getReturnStr(common.CCErrWebGetObjectFail, defErr.Errorf(common.CCErrWebGetObjectFail, err.Error()).Error(), nil)
+		c.String(http.StatusBadGateway, msg, nil)
+		return
+	}
+	logics.ExportMovePassword(instInfo, propertyMap)
+	instInfoM, err := logics.GetInstDataConvertMarkDown(instInfo, propertyMap)
+	if err != nil {
+		blog.Error(err.Error())
+		msg := getReturnStr(common.CCErrWebGetObjectFail, defErr.Errorf(common.CCErrWebGetObjectFail, err.Error()).Error(), nil)
+		c.String(http.StatusBadGateway, msg, nil)
+		return
+	}
+	// list convert markdown end
 	var file *xlsx.File
 	var sheet *xlsx.Sheet
 
@@ -149,7 +190,7 @@ func ExportInst(c *gin.Context) {
 	}
 
 	fields, err := logics.GetObjFieldIDs(objID, apiSite, nil, c.Request.Header)
-	err = logics.BuildExcelFromData(objID, fields, nil, instInfo, sheet, defLang)
+	err = logics.BuildExcelFromData(objID, fields, nil, instInfoM, sheet, defLang)
 	if nil != err {
 		blog.Errorf("ExportHost object:%s error:%s", objID, err.Error())
 		reply := getReturnStr(common.CCErrCommExcelTemplateFailed, defErr.Errorf(common.CCErrCommExcelTemplateFailed, objID).Error(), nil)

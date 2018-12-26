@@ -10,6 +10,8 @@
 	"field_type_multiasst": "multiple associations",
 	"field_type_timezone": "time zone",
 	"field_type_bool": "boolean",
+	"field_type_list": "list",
+	"field_type_password": "password",
 	"field_type_bool_true": "Yes",
 	"field_type_bool_false": "No"
 
