@@ -41,9 +41,9 @@
                         <li>{{resultInfo['bk_error_msg']}}</li>
                     </ul>
                 </template>
-                <a href="javascript:void(0)" class="result-slide" 
+                <a href="javascript:void(0)" class="result-slide"
                     :class="{'close': !isResultOpen}"
-                    v-if="resultInfo.result" 
+                    v-if="resultInfo.result"
                     @click="isResultOpen=!isResultOpen">
                     {{isResultOpen ? $t('EventPush["收起"]') : $t('EventPush["展开"]')}}
                 </a>
@@ -105,7 +105,7 @@
                         originalResponse: true
                     }
                 })
-                this.resultInfo = res
+                this.resultInfo = res.data
             },
             /*
                 测试连通性
@@ -119,7 +119,7 @@
                         originalResponse: true
                     }
                 })
-                this.resultInfo = res
+                this.resultInfo = res.data
             },
             closePop () {
                 this.isResultShow = false
