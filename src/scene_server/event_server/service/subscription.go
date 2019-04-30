@@ -14,6 +14,7 @@ package service
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -331,8 +332,13 @@ func (s *Service) Ping(req *restful.Request, resp *restful.Response) {
 	callbackBody := dat.Data
 
 	blog.Infof("requesting callback: %v,%s", callbackurl, callbackBody)
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
 	callbackreq, _ := http.NewRequest("POST", callbackurl, bytes.NewBufferString(callbackBody))
-	callbackResp, err := http.DefaultClient.Do(callbackreq)
+	callbackResp, err := client.Do(callbackreq)
 	if err != nil {
 		blog.Errorf("test distribute error:%v", err)
 		resp.WriteError(http.StatusBadRequest, &metadata.RespError{Msg: defErr.Error(common.CCErrEventSubscribePingFailed)})

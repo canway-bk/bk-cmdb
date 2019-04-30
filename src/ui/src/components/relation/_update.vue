@@ -30,6 +30,7 @@
             :header="table.header"
             :list="table.list"
             :colBorder="true"
+            :wrapper-minus-height="308"
             @handlePageChange="setCurrentPage"
             @handleSizeChange="search"
             @handleSortChange="setCurrentSort">

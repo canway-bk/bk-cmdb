@@ -14,6 +14,7 @@ package distribution
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -21,10 +22,9 @@ import (
 	"strconv"
 	"time"
 
-	redis "gopkg.in/redis.v5"
+	"gopkg.in/redis.v5"
 
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/httpclient"
 	"configcenter/src/common/metadata"
 	"configcenter/src/scene_server/event_server/types"
 )
@@ -44,7 +44,12 @@ func (dh *DistHandler) SendCallback(receiver *metadata.Subscription, event strin
 	} else {
 		duration = receiver.GetTimeout()
 	}
-	resp, err := httpCli.DoWithTimeout(duration, req)
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr, Timeout: duration}
+	resp, err := client.Do(req)
 	if err != nil {
 		increaseFailue(dh.cache, receiver.SubscriptionID)
 		return fmt.Errorf("event distribute fail, send request error: %v, date=[%s]", err, event)
@@ -74,8 +79,6 @@ func (dh *DistHandler) SendCallback(receiver *metadata.Subscription, event strin
 
 	return
 }
-
-var httpCli = httpclient.NewHttpClient()
 
 func increaseTotal(cache *redis.Client, subscriptionID int64) error {
 	return increase(cache, subscriptionID, "total")
