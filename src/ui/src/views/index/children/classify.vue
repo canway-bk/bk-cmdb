@@ -1,9 +1,9 @@
 <template>
     <div class="classify-layout clearfix">
-        <div class="classify-waterfall fl" 
-            v-for="col in classifyColumns.length" 
+        <div class="classify-waterfall fl"
+            v-for="col in classifyColumns.length"
             :key="col">
-            <v-classify-item 
+            <v-classify-item
                 v-for="classify in classifyColumns[col - 1]"
                 :key="classify['bk_classification_id']"
                 :classify="classify">
@@ -36,15 +36,15 @@
                     'bk_objects': []
                 }
                 // 放开展示权限
-                // if (this.admin || (this.privilege['model_config'] || {}).hasOwnProperty('bk_organization')) {
-                hostManageClassification['bk_objects'].push({
-                    'bk_obj_name': this.$t('Common["业务"]'),
-                    'bk_obj_id': 'biz',
-                    'bk_obj_icon': 'icon-cc-business',
-                    'path': '/business',
-                    'bk_classification_id': 'bk_collection'
-                })
-                // }
+                if (this.admin || (this.privilege['model_config'] || {}).hasOwnProperty('bk_organization')) {
+                    hostManageClassification['bk_objects'].push({
+                        'bk_obj_name': this.$t('Common["业务"]'),
+                        'bk_obj_id': 'biz',
+                        'bk_obj_icon': 'icon-cc-business',
+                        'path': '/business',
+                        'bk_classification_id': 'bk_collection'
+                    })
+                }
                 if (this.admin || (this.privilege['sys_config']['global_busi'] || []).includes('resource')) {
                     hostManageClassification['bk_objects'].push({
                         'bk_obj_name': this.$t('Nav["主机"]'),
@@ -59,8 +59,8 @@
             classifyColumns () {
                 const classifies = [
                     this.hostManageClassification,
-                    // ...this.authorizedClassifications // 放开展示权限
-                    ...this.activeClassifications
+                    ...this.authorizedClassifications // 放开展示权限
+                    // ...this.activeClassifications
                 ].filter(classification => {
                     return classification['bk_classification_id'] !== 'bk_organization' && classification['bk_objects'].length
                 })

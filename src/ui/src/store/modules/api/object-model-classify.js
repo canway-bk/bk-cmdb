@@ -98,9 +98,14 @@ const getters = {
         const collectedModelIds = rootGetters['userCustom/usercustom'][collectedModelKey] || []
         collectedModelIds.forEach(modelId => {
             // 放开展示权限
-            // const available = getters.authorizedClassifications.some(classification => {
-            //     return classification['bk_objects'].some(model => model['bk_obj_id'] === modelId)
-            // })
+            const available = getters.authorizedClassifications.some(classification => {
+                return classification['bk_objects'].some(model => model['bk_obj_id'] === modelId)
+            })
+            if (!available) {
+                return
+            }
+            console.log('modelId', modelId)
+            console.log('available', available)
             const model = getters.getModelById(modelId)
             if (model) {
                 collection.push({
