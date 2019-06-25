@@ -44,7 +44,7 @@
                         v-model="condition[property['bk_obj_id']][property['bk_property_id']]['value']">
                     </cmdb-form-bool-input>
                     <cmdb-form-associate-input class="filter-field-value filter-field-associate fr"
-                        v-else-if="['singleasst', 'multiasst'].includes(property['bk_property_type'])"
+                        v-else-if="['singleasst', 'multiasst', 'foreignkey'].includes(property['bk_property_type'])"
                         v-model="condition[property['bk_obj_id']][property['bk_property_id']]['value']">
                     </cmdb-form-associate-input>
                     <component class="filter-field-value fr" :class="`filter-field-${property['bk_property_type']}`"
@@ -277,7 +277,9 @@
                     }
                 }).then(result => {
                     Object.keys(this.properties).forEach(objId => {
-                        this.properties[objId] = result[objId].filter(property => property['bk_property_type'] !== 'foreignkey')
+                        // 放开云区域搜索
+                        // this.properties[objId] = result[objId].filter(property => property['bk_property_type'] !== 'foreignkey')
+                        this.properties[objId] = result[objId]
                     })
                     return result
                 })
@@ -292,7 +294,7 @@
                 const propertyId = property['bk_property_id']
                 if (['bk_set_name', 'bk_module_name'].includes(propertyId)) {
                     return 'name'
-                } else if (['singlechar', 'longchar'].includes(propertyType)) {
+                } else if (['singlechar', 'longchar', 'foreignkey'].includes(propertyType)) { // 云区域搜索
                     return 'char'
                 }
                 return 'common'
@@ -313,7 +315,7 @@
                 }
                 // 填充必要模型查询参数
                 const requiredObj = ['biz', 'host', 'set', 'module']
-                const normalProperties = this.customFieldProperties.filter(property => !['singleasst', 'multiasst'].includes(property['bk_property_type']))
+                const normalProperties = this.customFieldProperties.filter(property => !['singleasst', 'multiasst', 'foreignkey'].includes(property['bk_property_type']))
                 requiredObj.forEach(objId => {
                     const objParams = {
                         'bk_obj_id': objId,
@@ -339,9 +341,11 @@
                     params.condition.push(objParams)
                 })
                 // 关联属性额外填充模型查询参数
-                const associateProperties = this.customFieldProperties.filter(property => ['singleasst', 'multiasst'].includes(property['bk_property_type']))
+                const associateProperties = this.customFieldProperties.filter(property => {
+                    return ['foreignkey'].includes(property['bk_property_type']) && property['bk_property_id'] === 'bk_cloud_id'
+                })
                 associateProperties.forEach(property => {
-                    const associateObjId = property['bk_asst_obj_id']
+                    const associateObjId = {'bk_cloud_id': 'plat'}[property.bk_property_id]
                     const propertyCondition = this.condition[property['bk_obj_id']][property['bk_property_id']]
                     // 关联模型存在且查询参数合法时，填充对应关联模型的condition
                     if (associateObjId && !['', null].includes(propertyCondition.value)) {
@@ -361,6 +365,28 @@
                         })
                     }
                 })
+                // const associateProperties = this.customFieldProperties.filter(property => ['singleasst', 'multiasst', 'foreignkey'].includes(property['bk_property_type']))
+                // associateProperties.forEach(property => {
+                //     const associateObjId = property['bk_asst_obj_id']
+                //     const propertyCondition = this.condition[property['bk_obj_id']][property['bk_property_id']]
+                //     // 关联模型存在且查询参数合法时，填充对应关联模型的condition
+                //     if (associateObjId && !['', null].includes(propertyCondition.value)) {
+                //         let objParams = params.condition.find(condition => condition['bk_obj_id'] === associateObjId)
+                //         if (!objParams) {
+                //             objParams = {
+                //                 'bk_obj_id': associateObjId,
+                //                 condition: [],
+                //                 fields: []
+                //             }
+                //             params.condition.push(objParams)
+                //         }
+                //         objParams.condition.push({
+                //             field: this.associateFieldMap[associateObjId] || 'bk_inst_name',
+                //             operator: propertyCondition.operator,
+                //             value: propertyCondition.value
+                //         })
+                //     }
+                // })
                 return params
             },
             setCondition () {
@@ -626,7 +652,7 @@
             font-size: 12px;
         }
         .form-name {
-            color: $cmdbTextColor;    
+            color: $cmdbTextColor;
         }
         .form-error {
             position: absolute;

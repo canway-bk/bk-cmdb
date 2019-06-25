@@ -104,8 +104,6 @@ const getters = {
             if (!available) {
                 return
             }
-            console.log('modelId', modelId)
-            console.log('available', available)
             const model = getters.getModelById(modelId)
             if (model) {
                 collection.push({
